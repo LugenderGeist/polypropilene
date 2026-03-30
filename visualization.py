@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 import os
+import seaborn as sns
 
 
 def plot_single_column(df, column, data_type, lower_bound=None, upper_bound=None, mean_val=None, save_path=None):
@@ -166,6 +167,222 @@ def plot_all_columns(df, bounds_config, input_columns, output_columns, save_fold
     plt.show()
 
 
+def plot_correlation_heatmap(df, input_columns, output_columns, save_folder=None, title="Тепловая карта корреляций"):
+    """
+    Построение симметричной тепловой карты корреляций для всех признаков
+
+    Parameters:
+    - df: DataFrame с данными
+    - input_columns: список входных столбцов
+    - output_columns: список выходных столбцов
+    - save_folder: папка для сохранения графика
+    - title: заголовок графика
+    """
+    # Выбираем только числовые столбцы
+    numeric_df = df.select_dtypes(include=[np.number])
+
+    if len(numeric_df.columns) == 0:
+        print("Нет числовых данных для построения корреляционной матрицы")
+        return
+
+    # Вычисляем корреляционную матрицу
+    corr_matrix = numeric_df.corr()
+
+    # Настраиваем размер графика в зависимости от количества признаков
+    n_features = len(corr_matrix.columns)
+    fig_size = max(10, min(20, n_features * 0.6))
+    fig, ax = plt.subplots(figsize=(fig_size, fig_size))
+
+    # Создаем симметричную цветовую карту (от синего к красному через белый)
+    # Центр в 0, чтобы отрицательные корреляции были синими, положительные - красными
+    cmap = sns.diverging_palette(250, 10, as_cmap=True)
+
+    # Рисуем полную тепловую карту (без маски, чтобы показать всю матрицу)
+    heatmap = sns.heatmap(corr_matrix,
+                          annot=True,
+                          fmt='.2f',
+                          cmap=cmap,
+                          center=0,  # Центр в 0 для симметричной закраски
+                          square=True,  # Квадратные ячейки
+                          linewidths=0.5,
+                          cbar_kws={"shrink": 0.8, "label": "Коэффициент корреляции"},
+                          ax=ax,
+                          annot_kws={'size': max(6, min(10, 14 - n_features * 0.3))})
+
+    # Выделяем входные и выходные столбцы цветом на осях
+    for tick in ax.get_xticklabels():
+        col_name = tick.get_text()
+        if col_name in input_columns:
+            tick.set_color('blue')
+            tick.set_weight('bold')
+        elif col_name in output_columns:
+            tick.set_color('red')
+            tick.set_weight('bold')
+
+    for tick in ax.get_yticklabels():
+        col_name = tick.get_text()
+        if col_name in input_columns:
+            tick.set_color('blue')
+            tick.set_weight('bold')
+        elif col_name in output_columns:
+            tick.set_color('red')
+            tick.set_weight('bold')
+
+    # Поворачиваем подписи для лучшей читаемости
+    plt.setp(ax.get_xticklabels(), rotation=45, ha='right', rotation_mode='anchor')
+    plt.setp(ax.get_yticklabels(), rotation=0)
+
+    ax.set_title(title, fontsize=14, fontweight='bold', pad=20)
+    ax.set_xlabel('Признаки', fontsize=12)
+    ax.set_ylabel('Признаки', fontsize=12)
+
+    plt.tight_layout()
+
+    # Сохраняем график
+    if save_folder:
+        save_path = os.path.join(save_folder, 'correlation_heatmap.png')
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        print(f"Тепловая карта корреляций сохранена: {save_path}")
+
+    plt.show()
+
+    # Выводим статистику по корреляциям
+    print("\n" + "=" * 80)
+    print("СТАТИСТИКА КОРРЕЛЯЦИЙ")
+    print("=" * 80)
+
+    # Находим самые сильные корреляции
+    corr_pairs = []
+    for i in range(len(corr_matrix.columns)):
+        for j in range(i + 1, len(corr_matrix.columns)):
+            corr_value = corr_matrix.iloc[i, j]
+            if abs(corr_value) > 0.5:  # Сильные корреляции
+                corr_pairs.append({
+                    'pair': f"{corr_matrix.columns[i]} - {corr_matrix.columns[j]}",
+                    'correlation': corr_value,
+                    'abs_corr': abs(corr_value)
+                })
+
+    if corr_pairs:
+        # Сортируем по абсолютному значению корреляции
+        corr_pairs.sort(key=lambda x: x['abs_corr'], reverse=True)
+
+        print("\nСамые сильные корреляции (|r| > 0.5):")
+        for pair in corr_pairs[:10]:  # Показываем топ-10
+            # Определяем знак корреляции для цветового выделения
+            color = '\033[92m' if pair[
+                                      'correlation'] > 0 else '\033[91m'  # Зеленый для положительных, красный для отрицательных
+            reset = '\033[0m'
+            print(f"  {color}{pair['pair']}: {pair['correlation']:.3f}{reset}")
+
+        # Выводим корреляции входных с выходными
+        print("\nКорреляции входных признаков с выходными:")
+        has_correlations = False
+        for input_col in input_columns:
+            if input_col in corr_matrix.index:
+                for output_col in output_columns:
+                    if output_col in corr_matrix.columns:
+                        corr_value = corr_matrix.loc[input_col, output_col]
+                        if abs(corr_value) > 0.3:  # Заметные корреляции
+                            has_correlations = True
+                            color = '\033[92m' if corr_value > 0 else '\033[91m'
+                            reset = '\033[0m'
+                            print(f"  {color}{input_col} → {output_col}: {corr_value:.3f}{reset}")
+
+        if not has_correlations:
+            print("  Нет заметных корреляций (|r| > 0.3)")
+    else:
+        print("\nСильных корреляций (|r| > 0.5) не обнаружено")
+
+    # Выводим дополнительную статистику
+    print("\n" + "=" * 80)
+    print("ДОПОЛНИТЕЛЬНАЯ СТАТИСТИКА КОРРЕЛЯЦИЙ")
+    print("=" * 80)
+
+    # Статистика по положительным и отрицательным корреляциям
+    positive_corr = corr_matrix[corr_matrix > 0].count().sum() - len(corr_matrix.columns)  # Вычитаем диагональ
+    negative_corr = corr_matrix[corr_matrix < 0].count().sum()
+    strong_corr = (abs(corr_matrix) > 0.7).sum().sum() - len(corr_matrix.columns)  # Сильные корреляции
+    moderate_corr = ((abs(corr_matrix) > 0.5) & (abs(corr_matrix) <= 0.7)).sum().sum()  # Умеренные корреляции
+
+    total_pairs = (len(corr_matrix.columns) * (len(corr_matrix.columns) - 1)) // 2
+
+    print(f"\nВсего пар признаков: {total_pairs}")
+    print(f"Положительные корреляции: {positive_corr // 2} ({positive_corr // 2 / total_pairs * 100:.1f}%)")
+    print(f"Отрицательные корреляции: {negative_corr // 2} ({negative_corr // 2 / total_pairs * 100:.1f}%)")
+    print(f"Сильные корреляции (|r| > 0.7): {strong_corr // 2}")
+    print(f"Умеренные корреляции (0.5 < |r| ≤ 0.7): {moderate_corr // 2}")
+
+    return corr_matrix
+
+
+def plot_correlation_with_target(df, target_columns, input_columns, save_folder=None):
+    """
+    Построение графиков корреляции входных признаков с целевыми переменными
+
+    Parameters:
+    - df: DataFrame с данными
+    - target_columns: список целевых столбцов (выходных)
+    - input_columns: список входных столбцов
+    - save_folder: папка для сохранения графиков
+    """
+    # Выбираем только числовые столбцы
+    numeric_df = df.select_dtypes(include=[np.number])
+
+    for target in target_columns:
+        if target not in numeric_df.columns:
+            continue
+
+        fig, ax = plt.subplots(figsize=(12, 6))
+
+        # Вычисляем корреляции с целевой переменной
+        correlations = {}
+        for col in input_columns:
+            if col in numeric_df.columns and col != target:
+                corr = numeric_df[col].corr(numeric_df[target])
+                correlations[col] = corr
+
+        if not correlations:
+            print(f"Нет данных для построения корреляций с {target}")
+            plt.close()
+            continue
+
+        # Сортируем по абсолютному значению корреляции
+        sorted_corr = dict(sorted(correlations.items(), key=lambda x: abs(x[1]), reverse=True))
+
+        # Создаем bar plot
+        colors = ['red' if v < 0 else 'green' for v in sorted_corr.values()]
+        bars = ax.bar(range(len(sorted_corr)), sorted_corr.values(), color=colors, alpha=0.7)
+
+        # Добавляем значения на столбцы
+        for i, (col, corr) in enumerate(sorted_corr.items()):
+            ax.text(i, corr + (0.02 if corr >= 0 else -0.08),
+                    f'{corr:.3f}', ha='center', va='bottom' if corr >= 0 else 'top',
+                    fontsize=9)
+
+        ax.set_xticks(range(len(sorted_corr)))
+        ax.set_xticklabels(sorted_corr.keys(), rotation=45, ha='right', fontsize=10)
+        ax.set_ylabel('Коэффициент корреляции Пирсона', fontsize=12)
+        ax.set_xlabel('Входные признаки', fontsize=12)
+        ax.set_title(f'Корреляция входных признаков с {target}', fontsize=14, fontweight='bold')
+        ax.axhline(y=0, color='black', linestyle='-', linewidth=0.5)
+        ax.axhline(y=0.5, color='gray', linestyle='--', alpha=0.5, label='Сильная положительная (0.5)')
+        ax.axhline(y=-0.5, color='gray', linestyle='--', alpha=0.5, label='Сильная отрицательная (-0.5)')
+        ax.grid(True, alpha=0.3)
+        ax.legend()
+
+        plt.tight_layout()
+
+        # Сохраняем график
+        if save_folder:
+            safe_name = target.replace('/', '_').replace('\\', '_').replace(':', '_')
+            save_path = os.path.join(save_folder, f'correlation_with_{safe_name}.png')
+            plt.savefig(save_path, dpi=300, bbox_inches='tight')
+            print(f"График корреляций для {target} сохранен: {save_path}")
+
+        plt.show()
+
+
 def save_initial_plots(df, input_columns, output_columns, save_folder):
     """Сохраняет начальные графики с границами ±50%"""
     print("\n" + "=" * 80)
@@ -305,59 +522,3 @@ def save_initial_plots(df, input_columns, output_columns, save_folder):
             print(f"Не удалось сохранить график для {column}: {e}")
 
     print(f"Все начальные графики сохранены в папку: {initial_folder}")
-
-def plot_comparison_before_after(df_before, df_after, column, data_type, bounds_config, save_path=None):
-    """Строит сравнительные графики до и после удаления выбросов"""
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
-
-    color = 'blue' if data_type == 'Входные' else 'red'
-
-    # График до удаления
-    data_before = pd.to_numeric(df_before[column], errors='coerce')
-    config = bounds_config[column]
-
-    ax1.plot(df_before.index, data_before, color=color, alpha=0.7, linewidth=1.5, marker='.', markersize=2)
-    ax1.axhline(y=config['mean'], color='black', linestyle='--', alpha=0.5, linewidth=1.5)
-    ax1.axhline(y=config['lower'], color='orange', linestyle=':', alpha=0.7, linewidth=1.5)
-    ax1.axhline(y=config['upper'], color='orange', linestyle=':', alpha=0.7, linewidth=1.5)
-    ax1.fill_between(df_before.index, config['lower'], config['upper'], alpha=0.1, color='green')
-
-    outlier_mask_before = (data_before < config['lower']) | (data_before > config['upper'])
-    if outlier_mask_before.sum() > 0:
-        ax1.scatter(df_before.index[outlier_mask_before], data_before[outlier_mask_before],
-                    color='red', s=30, label=f'Выбросы ({outlier_mask_before.sum()})', zorder=5)
-
-    ax1.set_title(f'{column} ({data_type}) - ДО УДАЛЕНИЯ', fontsize=12, fontweight='bold')
-    ax1.set_xlabel('Индекс строки')
-    ax1.set_ylabel('Значение')
-    ax1.grid(True, alpha=0.3)
-    ax1.legend()
-
-    # График после удаления
-    data_after = pd.to_numeric(df_after[column], errors='coerce')
-
-    ax2.plot(df_after.index, data_after, color=color, alpha=0.7, linewidth=1.5, marker='.', markersize=2)
-    ax2.axhline(y=config['mean'], color='black', linestyle='--', alpha=0.5, linewidth=1.5)
-    ax2.axhline(y=config['lower'], color='orange', linestyle=':', alpha=0.7, linewidth=1.5)
-    ax2.axhline(y=config['upper'], color='orange', linestyle=':', alpha=0.7, linewidth=1.5)
-    ax2.fill_between(df_after.index, config['lower'], config['upper'], alpha=0.1, color='green')
-
-    outlier_mask_after = (data_after < config['lower']) | (data_after > config['upper'])
-    if outlier_mask_after.sum() > 0:
-        ax2.scatter(df_after.index[outlier_mask_after], data_after[outlier_mask_after],
-                    color='red', s=30, label=f'Выбросы ({outlier_mask_after.sum()})', zorder=5)
-
-    ax2.set_title(f'{column} ({data_type}) - ПОСЛЕ УДАЛЕНИЯ', fontsize=12, fontweight='bold')
-    ax2.set_xlabel('Индекс строки')
-    ax2.set_ylabel('Значение')
-    ax2.grid(True, alpha=0.3)
-    ax2.legend()
-
-    plt.suptitle(f'Сравнение данных: {column}', fontsize=14, fontweight='bold')
-    plt.tight_layout()
-
-    if save_path:
-        plt.savefig(save_path, dpi=300, bbox_inches='tight')
-        print(f"Сравнительный график сохранен: {save_path}")
-
-    plt.show()

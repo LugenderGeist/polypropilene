@@ -187,7 +187,7 @@ def save_cleaned_data(df_cleaned, original_filename, save_folder):
     df_cleaned.to_csv(cleaned_path, index=False, encoding='utf-8-sig')
     print(f"\nОчищенные данные сохранены в: {cleaned_path}")
 
-    # Также сохраняем информацию об удаленных строках
+    # Также создаем путь для информации об удалении
     info_filename = f"{base_name}_removal_info.txt"
     info_path = os.path.join(save_folder, info_filename)
 

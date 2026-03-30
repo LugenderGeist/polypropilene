@@ -3,7 +3,8 @@ import pandas as pd
 import numpy as np
 from utils import (load_data, create_plots_folder, setup_columns,
                    save_bounds_config, remove_outliers, save_cleaned_data)
-from visualization import plot_all_columns, save_initial_plots, plot_comparison_before_after
+from visualization import (plot_all_columns, save_initial_plots,
+                           plot_correlation_heatmap, plot_correlation_with_target)
 from interactive_menu import interactive_bounds_adjustment
 
 
@@ -90,6 +91,26 @@ def main():
     # Сохраняем начальные графики
     save_initial_plots(df, input_columns, output_columns, plots_folder)
 
+    # Строим тепловую карту корреляций для исходных данных
+    print("\n" + "=" * 80)
+    print("ТЕПЛОВАЯ КАРТА КОРРЕЛЯЦИЙ (ИСХОДНЫЕ ДАННЫЕ)")
+    print("=" * 80)
+    input("Нажмите Enter, чтобы построить тепловую карту корреляций...")
+
+    correlation_folder = os.path.join(plots_folder, 'correlation_analysis')
+    if not os.path.exists(correlation_folder):
+        os.makedirs(correlation_folder)
+
+    # Общая тепловая карта
+    plot_correlation_heatmap(df, input_columns, output_columns,
+                             save_folder=correlation_folder,
+                             title="Тепловая карта корреляций (исходные данные)")
+
+    # Корреляции входных с выходными
+    if output_columns:
+        plot_correlation_with_target(df, output_columns, input_columns,
+                                     save_folder=correlation_folder)
+
     # Интерактивная настройка границ
     print("\n" + "=" * 60)
     print("ИНТЕРАКТИВНАЯ НАСТРОЙКА ГРАНИЦ")
@@ -132,6 +153,16 @@ def main():
         df_cleaned, removed_indices, removal_report = remove_outliers(df, bounds_config, all_data_columns)
 
         if len(removed_indices) > 0:
+            # Строим тепловую карту для очищенных данных
+            print("\n" + "=" * 80)
+            print("ТЕПЛОВАЯ КАРТА КОРРЕЛЯЦИЙ (ОЧИЩЕННЫЕ ДАННЫЕ)")
+            print("=" * 80)
+            input("Нажмите Enter, чтобы построить тепловую карту для очищенных данных...")
+
+            plot_correlation_heatmap(df_cleaned, input_columns, output_columns,
+                                     save_folder=correlation_folder,
+                                     title="Тепловая карта корреляций (очищенные данные)")
+
             # Сохраняем очищенные данные
             save_choice = input("\nСохранить очищенные данные в файл? (да/нет): ").strip().lower()
             if save_choice in ['да', 'yes', 'y', 'д']:
