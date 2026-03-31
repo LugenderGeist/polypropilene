@@ -170,20 +170,42 @@ def plot_all_columns(df, bounds_config, input_columns, output_columns, save_fold
 def plot_correlation_heatmap(df, input_columns, output_columns, save_folder=None, title="Тепловая карта корреляций"):
     """
     Построение симметричной тепловой карты корреляций для всех признаков
-
-    Parameters:
-    - df: DataFrame с данными
-    - input_columns: список входных столбцов
-    - output_columns: список выходных столбцов
-    - save_folder: папка для сохранения графика
-    - title: заголовок графика
     """
+    # Диагностика: выводим информацию о данных
+    print("\n" + "=" * 60)
+    print("ДИАГНОСТИКА ПЕРЕД ПОСТРОЕНИЕМ ТЕПЛОВОЙ КАРТЫ")
+    print("=" * 60)
+    print(f"Тип данных df: {type(df)}")
+    print(f"Форма данных: {df.shape}")
+    print("\nТипы столбцов до выборки:")
+    for col in df.columns:
+        print(f"  {col}: {df[col].dtype}")
+
     # Выбираем только числовые столбцы
     numeric_df = df.select_dtypes(include=[np.number])
 
+    print(f"\nНайдено числовых столбцов: {len(numeric_df.columns)}")
+    if len(numeric_df.columns) > 0:
+        print("Числовые столбцы:")
+        for col in numeric_df.columns:
+            print(f"  {col}")
+    else:
+        print("ВНИМАНИЕ: Не найдено числовых столбцов!")
+        print("Пробуем принудительно преобразовать все столбцы в числа...")
+
+        # Принудительное преобразование всех столбцов
+        for col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors='coerce')
+
+        numeric_df = df.select_dtypes(include=[np.number])
+        print(f"После принудительного преобразования найдено числовых столбцов: {len(numeric_df.columns)}")
+
     if len(numeric_df.columns) == 0:
-        print("Нет числовых данных для построения корреляционной матрицы")
-        return
+        print("ОШИБКА: Нет числовых данных для построения корреляционной матрицы")
+        print("Проверьте, что файл содержит числовые данные")
+        print("Первые 5 строк данных:")
+        print(df.head())
+        return None
 
     # Вычисляем корреляционную матрицу
     corr_matrix = numeric_df.corr()
@@ -193,17 +215,16 @@ def plot_correlation_heatmap(df, input_columns, output_columns, save_folder=None
     fig_size = max(10, min(20, n_features * 0.6))
     fig, ax = plt.subplots(figsize=(fig_size, fig_size))
 
-    # Создаем симметричную цветовую карту (от синего к красному через белый)
-    # Центр в 0, чтобы отрицательные корреляции были синими, положительные - красными
+    # Создаем симметричную цветовую карту
     cmap = sns.diverging_palette(250, 10, as_cmap=True)
 
-    # Рисуем полную тепловую карту (без маски, чтобы показать всю матрицу)
+    # Рисуем тепловую карту
     heatmap = sns.heatmap(corr_matrix,
                           annot=True,
                           fmt='.2f',
                           cmap=cmap,
-                          center=0,  # Центр в 0 для симметричной закраски
-                          square=True,  # Квадратные ячейки
+                          center=0,
+                          square=True,
                           linewidths=0.5,
                           cbar_kws={"shrink": 0.8, "label": "Коэффициент корреляции"},
                           ax=ax,
@@ -228,7 +249,7 @@ def plot_correlation_heatmap(df, input_columns, output_columns, save_folder=None
             tick.set_color('red')
             tick.set_weight('bold')
 
-    # Поворачиваем подписи для лучшей читаемости
+    # Поворачиваем подписи
     plt.setp(ax.get_xticklabels(), rotation=45, ha='right', rotation_mode='anchor')
     plt.setp(ax.get_yticklabels(), rotation=0)
 
@@ -256,7 +277,7 @@ def plot_correlation_heatmap(df, input_columns, output_columns, save_folder=None
     for i in range(len(corr_matrix.columns)):
         for j in range(i + 1, len(corr_matrix.columns)):
             corr_value = corr_matrix.iloc[i, j]
-            if abs(corr_value) > 0.5:  # Сильные корреляции
+            if abs(corr_value) > 0.5:
                 corr_pairs.append({
                     'pair': f"{corr_matrix.columns[i]} - {corr_matrix.columns[j]}",
                     'correlation': corr_value,
@@ -264,57 +285,35 @@ def plot_correlation_heatmap(df, input_columns, output_columns, save_folder=None
                 })
 
     if corr_pairs:
-        # Сортируем по абсолютному значению корреляции
         corr_pairs.sort(key=lambda x: x['abs_corr'], reverse=True)
 
         print("\nСамые сильные корреляции (|r| > 0.5):")
-        for pair in corr_pairs[:10]:  # Показываем топ-10
-            # Определяем знак корреляции для цветового выделения
-            color = '\033[92m' if pair[
-                                      'correlation'] > 0 else '\033[91m'  # Зеленый для положительных, красный для отрицательных
+        for pair in corr_pairs[:10]:
+            color = '\033[92m' if pair['correlation'] > 0 else '\033[91m'
             reset = '\033[0m'
             print(f"  {color}{pair['pair']}: {pair['correlation']:.3f}{reset}")
 
         # Выводим корреляции входных с выходными
-        print("\nКорреляции входных признаков с выходными:")
-        has_correlations = False
-        for input_col in input_columns:
-            if input_col in corr_matrix.index:
-                for output_col in output_columns:
-                    if output_col in corr_matrix.columns:
-                        corr_value = corr_matrix.loc[input_col, output_col]
-                        if abs(corr_value) > 0.3:  # Заметные корреляции
-                            has_correlations = True
-                            color = '\033[92m' if corr_value > 0 else '\033[91m'
-                            reset = '\033[0m'
-                            print(f"  {color}{input_col} → {output_col}: {corr_value:.3f}{reset}")
+        if output_columns:
+            print("\nКорреляции входных признаков с выходными:")
+            has_correlations = False
+            for input_col in input_columns:
+                if input_col in corr_matrix.index:
+                    for output_col in output_columns:
+                        if output_col in corr_matrix.columns:
+                            corr_value = corr_matrix.loc[input_col, output_col]
+                            if abs(corr_value) > 0.3:
+                                has_correlations = True
+                                color = '\033[92m' if corr_value > 0 else '\033[91m'
+                                reset = '\033[0m'
+                                print(f"  {color}{input_col} → {output_col}: {corr_value:.3f}{reset}")
 
-        if not has_correlations:
-            print("  Нет заметных корреляций (|r| > 0.3)")
+            if not has_correlations:
+                print("  Нет заметных корреляций (|r| > 0.3)")
     else:
         print("\nСильных корреляций (|r| > 0.5) не обнаружено")
 
-    # Выводим дополнительную статистику
-    print("\n" + "=" * 80)
-    print("ДОПОЛНИТЕЛЬНАЯ СТАТИСТИКА КОРРЕЛЯЦИЙ")
-    print("=" * 80)
-
-    # Статистика по положительным и отрицательным корреляциям
-    positive_corr = corr_matrix[corr_matrix > 0].count().sum() - len(corr_matrix.columns)  # Вычитаем диагональ
-    negative_corr = corr_matrix[corr_matrix < 0].count().sum()
-    strong_corr = (abs(corr_matrix) > 0.7).sum().sum() - len(corr_matrix.columns)  # Сильные корреляции
-    moderate_corr = ((abs(corr_matrix) > 0.5) & (abs(corr_matrix) <= 0.7)).sum().sum()  # Умеренные корреляции
-
-    total_pairs = (len(corr_matrix.columns) * (len(corr_matrix.columns) - 1)) // 2
-
-    print(f"\nВсего пар признаков: {total_pairs}")
-    print(f"Положительные корреляции: {positive_corr // 2} ({positive_corr // 2 / total_pairs * 100:.1f}%)")
-    print(f"Отрицательные корреляции: {negative_corr // 2} ({negative_corr // 2 / total_pairs * 100:.1f}%)")
-    print(f"Сильные корреляции (|r| > 0.7): {strong_corr // 2}")
-    print(f"Умеренные корреляции (0.5 < |r| ≤ 0.7): {moderate_corr // 2}")
-
     return corr_matrix
-
 
 def plot_correlation_with_target(df, target_columns, input_columns, save_folder=None):
     """

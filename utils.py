@@ -13,6 +13,16 @@ def detect_encoding(file_path):
         return result['encoding']
 
 
+# Функция для преобразования всех столбцов в числовой формат
+def convert_to_numeric(df):
+    """Преобразует все столбцы DataFrame в числовой формат где возможно"""
+    df_numeric = df.copy()
+    for col in df_numeric.columns:
+        # Пробуем преобразовать в числовой формат
+        df_numeric[col] = pd.to_numeric(df_numeric[col], errors='coerce')
+    return df_numeric
+
+
 # Функция для загрузки данных с определением кодировки
 def load_data(file_path):
     """Загружает данные из CSV файла с автоматическим определением кодировки"""
@@ -20,7 +30,17 @@ def load_data(file_path):
         encoding = detect_encoding(file_path)
         print(f"Определенная кодировка файла: {encoding}")
         df = pd.read_csv(file_path, encoding=encoding)
-        print("Файл успешно загружен!")
+
+        # Преобразуем все столбцы в числовой формат
+        df = convert_to_numeric(df)
+
+        # Выводим информацию о типах данных после преобразования
+        print("\nТипы данных после преобразования в числа:")
+        for col in df.columns:
+            non_null = df[col].notna().sum()
+            print(f"  {col}: {df[col].dtype} (непустых: {non_null})")
+
+        print("Файл успешно загружен и преобразован в числовой формат!")
         return df, encoding
     except Exception as e:
         print(f"Ошибка при чтении файла: {e}")
@@ -29,7 +49,10 @@ def load_data(file_path):
         for enc in encodings_to_try:
             try:
                 df = pd.read_csv(file_path, encoding=enc)
+                # Преобразуем все столбцы в числовой формат
+                df = convert_to_numeric(df)
                 print(f"Файл успешно загружен с кодировкой: {enc}")
+                print("Данные преобразованы в числовой формат")
                 return df, enc
             except:
                 continue
@@ -71,9 +94,15 @@ def setup_columns(df):
 
     total_cols = df.shape[1]
 
+    # Показываем статистику по столбцам
+    print("\nСтатистика по столбцам (количество непустых значений):")
+    for col in df.columns:
+        non_null = df[col].notna().sum()
+        print(f"  {col}: {non_null} значений")
+
     while True:
         try:
-            input_cols = int(input("Введите количество столбцов с начала файла, которые являются входными данными: "))
+            input_cols = int(input("\nВведите количество столбцов с начала файла, которые являются входными данными: "))
             output_cols = int(input("Введите количество столбцов с конца файла, которые являются выходными данными: "))
 
             if input_cols + output_cols > total_cols:

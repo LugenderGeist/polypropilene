@@ -214,6 +214,16 @@ def main():
 
         else:
             print("\nВыбросов не обнаружено. Очистка не требуется.")
+            # Сохраняем конфигурацию границ
+            save_config = input("\nСохранить конфигурацию границ в файл? (да/нет): ").strip().lower()
+            if save_config in ['да', 'yes', 'y', 'д']:
+                config_file = save_bounds_config(bounds_config, plots_folder)
+                print(f"Конфигурация сохранена в файл: {config_file}")
+
+            print("\n" + "=" * 60)
+            print(f"ВСЕ ГРАФИКИ СОХРАНЕНЫ В ПАПКУ: {plots_folder}")
+            print("ГОТОВО!")
+            print("=" * 60)
     else:
         # Сохраняем конфигурацию границ без удаления
         save_config = input("\nСохранить конфигурацию границ в файл? (да/нет): ").strip().lower()
