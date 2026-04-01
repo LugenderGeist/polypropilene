@@ -1,6 +1,8 @@
 import os
 import pandas as pd
+import numpy as np
 from visualization import plot_single_column, plot_all_columns
+from outlier_filter import apply_outlier_filter, visualize_outlier_filter
 
 
 def interactive_bounds_adjustment(df, all_columns, input_columns, output_columns, save_folder):
@@ -27,6 +29,11 @@ def interactive_bounds_adjustment(df, all_columns, input_columns, output_columns
     if not os.path.exists(adjusted_folder):
         os.makedirs(adjusted_folder)
 
+    # Создаем папку для фильтров
+    filter_folder = os.path.join(save_folder, 'outlier_filters')
+    if not os.path.exists(filter_folder):
+        os.makedirs(filter_folder)
+
     # Показываем начальные графики
     print("\n" + "=" * 80)
     print("НАЧАЛЬНЫЕ ГРАФИКИ С ГРАНИЦАМИ ±50% ОТ СРЕДНЕГО")
@@ -36,7 +43,7 @@ def interactive_bounds_adjustment(df, all_columns, input_columns, output_columns
     # Интерактивный цикл изменения границ
     while True:
         print("\n" + "=" * 80)
-        print("НАСТРОЙКА ГРАНИЦ")
+        print("НАСТРОЙКА ГРАНИЦ / ФИЛЬТРАЦИЯ ВЫБРОСОВ")
         print("=" * 80)
         print("\nДоступные столбцы для настройки:")
 
@@ -76,8 +83,8 @@ def interactive_bounds_adjustment(df, all_columns, input_columns, output_columns
                 print("1. Изменить нижнюю границу")
                 print("2. Изменить верхнюю границу")
                 print("3. Показать график этого столбца")
-                print("4. Сохранить текущий график этого столбца")
-                print("5. Показать все графики с текущими настройками")
+                print("4. Показать все графики с текущими настройками")
+                print("5. Применить автоматический фильтр выбросов")
                 print("6. Вернуться к выбору столбца")
 
                 action = input("Ваш выбор (1-6): ").strip()
@@ -118,18 +125,113 @@ def interactive_bounds_adjustment(df, all_columns, input_columns, output_columns
                                        config['lower'], config['upper'], config['mean'])
 
                 elif action == '4':
-                    # Сохраняем текущий график
-                    safe_name = col.replace('/', '_').replace('\\', '_').replace(':', '_')
-                    save_path = os.path.join(adjusted_folder, f'{safe_name}_adjusted.png')
-                    plot_single_column(df, col, config['data_type'],
-                                       config['lower'], config['upper'], config['mean'],
-                                       save_path=save_path)
-                    print(f"График сохранен: {save_path}")
-
-                elif action == '5':
                     # Показываем все графики с текущими настройками
                     print("\nПоказываю все графики с текущими границами...")
                     plot_all_columns(df, bounds_config, input_columns, output_columns, adjusted_folder)
+
+                elif action == '5':
+                    # Применяем автоматический фильтр выбросов
+                    print("\n" + "=" * 60)
+                    print(f"АВТОМАТИЧЕСКАЯ ФИЛЬТРАЦИЯ ДЛЯ {col}")
+                    print("=" * 60)
+                    print("\nДоступные методы фильтрации:")
+                    print("1. IQR (межквартильный размах) - для стационарных данных")
+                    print("2. MAD (медианное абсолютное отклонение) - устойчив к выбросам")
+                    print("3. Скользящее окно - для временных рядов (ловит локальные выбросы)")
+                    print("4. Производная - для поиска резких скачков")
+                    print("5. Поиск пиков - для изолированных пиков")
+                    print("6. Фильтр Савицкого-Голая - сглаживание и поиск отклонений")
+                    print("7. Isolation Forest - машинное обучение (экспериментально)")
+
+                    method_choice = input("\nВыберите метод (1-7): ").strip()
+
+                    try:
+                        if method_choice == '1':
+                            multiplier = float(input("Множитель IQR (1.5-3, по умолч. 1.5): ") or "1.5")
+                            filtered_data, outlier_mask, bounds, stats = apply_outlier_filter(
+                                df, col, method='iqr', multiplier=multiplier
+                            )
+                        elif method_choice == '2':
+                            threshold = float(input("Порог MAD (3-3.5, по умолч. 3.5): ") or "3.5")
+                            filtered_data, outlier_mask, bounds, stats = apply_outlier_filter(
+                                df, col, method='mad', threshold=threshold
+                            )
+                        elif method_choice == '3':
+                            window_size = int(input("Размер окна (10-50, по умолч. 10): ") or "10")
+                            threshold = float(input("Порог (2-4, по умолч. 3): ") or "3")
+                            filtered_data, outlier_mask, bounds, stats = apply_outlier_filter(
+                                df, col, method='rolling', window_size=window_size, threshold=threshold
+                            )
+                        elif method_choice == '4':
+                            threshold_multiplier = float(input("Множитель порога (3-7, по умолч. 5): ") or "5")
+                            filtered_data, outlier_mask, bounds, stats = apply_outlier_filter(
+                                df, col, method='derivative', threshold_multiplier=threshold_multiplier
+                            )
+                        elif method_choice == '5':
+                            prominence = float(input("Prominence (0.3-1, по умолч. 0.5): ") or "0.5")
+                            distance = int(input("Мин. расстояние между пиками (5-20, по умолч. 10): ") or "10")
+                            filtered_data, outlier_mask, bounds, stats = apply_outlier_filter(
+                                df, col, method='peak', prominence=prominence, distance=distance
+                            )
+                        elif method_choice == '6':
+                            window_length = int(input("Длина окна (нечетное, 11-31, по умолч. 21): ") or "21")
+                            polyorder = int(input("Порядок полинома (2-5, по умолч. 3): ") or "3")
+                            threshold = float(input("Порог (2-4, по умолч. 3): ") or "3")
+                            filtered_data, outlier_mask, bounds, stats = apply_outlier_filter(
+                                df, col, method='savgol', window_length=window_length,
+                                polyorder=polyorder, threshold=threshold
+                            )
+                        elif method_choice == '7':
+                            contamination = float(input("Доля выбросов (0.05-0.2, по умолч. 0.1): ") or "0.1")
+                            filtered_data, outlier_mask, bounds, stats = apply_outlier_filter(
+                                df, col, method='isolation_forest', contamination=contamination
+                            )
+                        else:
+                            print("Неверный выбор метода")
+                            continue
+
+                        # Визуализируем результат фильтрации
+                        visualize_outlier_filter(df, col, filtered_data, outlier_mask, bounds, stats,
+                                                 save_folder=filter_folder)
+
+                        # Спрашиваем, применить ли фильтр
+                        apply_filter = input("\nПрименить этот фильтр и обновить границы? (да/нет): ").strip().lower()
+                        if apply_filter in ['да', 'yes', 'y', 'д']:
+                            if bounds is not None:
+                                # Если есть границы, обновляем конфигурацию
+                                config['lower'] = bounds[0]
+                                config['upper'] = bounds[1]
+                                print(f"Границы обновлены: [{bounds[0]:.4f}, {bounds[1]:.4f}]")
+                            else:
+                                # Если границ нет (для методов без явных границ),
+                                # предлагаем установить границы по данным после фильтрации
+                                filtered_clean = filtered_data.dropna()
+                                if len(filtered_clean) > 0:
+                                    new_mean = filtered_clean.mean()
+                                    new_std = filtered_clean.std()
+                                    suggested_lower = new_mean - 3 * new_std
+                                    suggested_upper = new_mean + 3 * new_std
+                                    print(f"\nРекомендуемые границы: [{suggested_lower:.4f}, {suggested_upper:.4f}]")
+                                    use_suggested = input("Использовать эти границы? (да/нет): ").strip().lower()
+                                    if use_suggested in ['да', 'yes', 'y', 'д']:
+                                        config['lower'] = suggested_lower
+                                        config['upper'] = suggested_upper
+                                        config['mean'] = new_mean
+                                        print("Границы обновлены")
+
+                            # Обновляем данные в DataFrame
+                            df[col] = filtered_data
+                            print("Данные обновлены. Выбросы заменены на NaN.")
+
+                            # Показываем обновленный график
+                            print("\nПоказываю обновленный график с новыми границами...")
+                            plot_single_column(df, col, config['data_type'],
+                                               config['lower'], config['upper'], config['mean'])
+                        else:
+                            print("Фильтр не применен.")
+
+                    except Exception as e:
+                        print(f"Ошибка при применении фильтра: {e}")
 
                 elif action == '6':
                     continue

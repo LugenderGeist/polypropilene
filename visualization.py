@@ -160,6 +160,9 @@ def plot_all_columns(df, bounds_config, input_columns, output_columns, save_fold
 
     # Сохраняем общий график если указана папка
     if save_folder:
+        # Создаем папку, если она не существует
+        if not os.path.exists(save_folder):
+            os.makedirs(save_folder)
         save_path = os.path.join(save_folder, 'all_plots_current.png')
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
         print(f"Общий график сохранен: {save_path}")
@@ -167,39 +170,76 @@ def plot_all_columns(df, bounds_config, input_columns, output_columns, save_fold
     plt.show()
 
 
-def plot_correlation_heatmap(df, input_columns, output_columns, save_folder=None, title="Тепловая карта корреляций"):
+def plot_raw_data(df, input_columns, output_columns, save_folder=None):
     """
-    Построение симметричной тепловой карты корреляций для всех признаков
-    """
-    # Диагностика: выводим информацию о данных
-    print("\n" + "=" * 60)
-    print("ДИАГНОСТИКА ПЕРЕД ПОСТРОЕНИЕМ ТЕПЛОВОЙ КАРТЫ")
-    print("=" * 60)
-    print(f"Тип данных df: {type(df)}")
-    print(f"Форма данных: {df.shape}")
-    print("\nТипы столбцов до выборки:")
-    for col in df.columns:
-        print(f"  {col}: {df[col].dtype}")
+    Построение графиков сырых данных без границ
 
+    Parameters:
+    - df: DataFrame
+    - input_columns: список входных столбцов
+    - output_columns: список выходных столбцов
+    - save_folder: папка для сохранения
+    """
+    n_cols = len(df.columns)
+    n_rows = (n_cols + 2) // 3
+
+    fig, axes = plt.subplots(n_rows, 3, figsize=(15, 4 * n_rows))
+    axes = axes.flatten()
+
+    for idx, column in enumerate(df.columns):
+        ax = axes[idx]
+
+        if column in input_columns:
+            color = 'blue'
+            data_type = 'Входные'
+        elif column in output_columns:
+            color = 'red'
+            data_type = 'Выходные'
+        else:
+            color = 'green'
+            data_type = 'Другие'
+
+        try:
+            data = pd.to_numeric(df[column], errors='coerce')
+            if data.isna().all():
+                ax.text(0.5, 0.5, f'Столбец "{column}"\nне содержит числовых данных',
+                        ha='center', va='center', transform=ax.transAxes)
+            else:
+                ax.plot(df.index, data, color=color, alpha=0.7, linewidth=1.5, marker='.', markersize=2)
+                ax.set_title(f'{column}\n({data_type})', fontsize=10, fontweight='bold')
+                ax.set_xlabel('Индекс строки')
+                ax.set_ylabel('Значение')
+                ax.grid(True, alpha=0.3)
+
+                mean_val = data.mean()
+                std_val = data.std()
+                ax.text(0.02, 0.95, f'μ={mean_val:.2f}\nσ={std_val:.2f}',
+                        transform=ax.transAxes, fontsize=8, verticalalignment='top',
+                        bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+        except Exception as e:
+            ax.text(0.5, 0.5, f'Ошибка: {str(e)}', ha='center', va='center', transform=ax.transAxes)
+            ax.set_title(f'{column}\n({data_type})', fontsize=10, fontweight='bold')
+
+    for idx in range(len(df.columns), len(axes)):
+        axes[idx].set_visible(False)
+
+    plt.suptitle('Сырые данные (без границ)', fontsize=14, fontweight='bold')
+    plt.tight_layout()
+
+    if save_folder:
+        if not os.path.exists(save_folder):
+            os.makedirs(save_folder)
+        save_path = os.path.join(save_folder, 'all_raw_plots.png')
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        print(f"Общий график сырых данных сохранен: {save_path}")
+
+    plt.show()
+
+def plot_correlation_heatmap(df, input_columns, output_columns, save_folder=None, title="Тепловая карта корреляций"):
     # Выбираем только числовые столбцы
     numeric_df = df.select_dtypes(include=[np.number])
 
     print(f"\nНайдено числовых столбцов: {len(numeric_df.columns)}")
-    if len(numeric_df.columns) > 0:
-        print("Числовые столбцы:")
-        for col in numeric_df.columns:
-            print(f"  {col}")
-    else:
-        print("ВНИМАНИЕ: Не найдено числовых столбцов!")
-        print("Пробуем принудительно преобразовать все столбцы в числа...")
-
-        # Принудительное преобразование всех столбцов
-        for col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors='coerce')
-
-        numeric_df = df.select_dtypes(include=[np.number])
-        print(f"После принудительного преобразования найдено числовых столбцов: {len(numeric_df.columns)}")
-
     if len(numeric_df.columns) == 0:
         print("ОШИБКА: Нет числовых данных для построения корреляционной матрицы")
         print("Проверьте, что файл содержит числовые данные")

@@ -3,9 +3,11 @@ import pandas as pd
 import numpy as np
 from utils import (load_data, create_plots_folder, setup_columns,
                    save_bounds_config, remove_outliers, save_cleaned_data)
-from visualization import (plot_all_columns, save_initial_plots,
+from visualization import (plot_all_columns, plot_raw_data, save_initial_plots,
                            plot_correlation_heatmap, plot_correlation_with_target)
 from interactive_menu import interactive_bounds_adjustment
+from window_correlation_analysis import (find_best_window, plot_best_window_heatmap,
+                                         plot_window_raw_data)
 
 
 def print_data_info(df):
@@ -88,12 +90,25 @@ def main():
     plots_folder = create_plots_folder()
     print(f"\nСоздана папка для сохранения графиков: {plots_folder}")
 
-    # Сохраняем начальные графики
-    save_initial_plots(df, input_columns, output_columns, plots_folder)
-
-    # Строим тепловую карту корреляций для исходных данных
+    # ============= 1. СЫРЫЕ ДАННЫЕ БЕЗ ГРАНИЦ =============
     print("\n" + "=" * 80)
-    print("ТЕПЛОВАЯ КАРТА КОРРЕЛЯЦИЙ (ИСХОДНЫЕ ДАННЫЕ)")
+    print("1. СЫРЫЕ ДАННЫЕ (БЕЗ ГРАНИЦ)")
+    print("=" * 80)
+    input("Нажмите Enter, чтобы показать графики сырых данных без границ...")
+
+    # Создаем папку для сырых графиков
+    raw_plots_folder = os.path.join(plots_folder, 'raw_plots')
+    if not os.path.exists(raw_plots_folder):
+        os.makedirs(raw_plots_folder)
+
+    # Функция plot_raw_data должна быть добавлена в visualization.py
+    # Она строит графики без границ
+    from visualization import plot_raw_data
+    plot_raw_data(df, input_columns, output_columns, save_folder=raw_plots_folder)
+
+    # ============= 3. ТЕПЛОВАЯ КАРТА КОРРЕЛЯЦИЙ =============
+    print("\n" + "=" * 80)
+    print("3. ТЕПЛОВАЯ КАРТА КОРРЕЛЯЦИЙ")
     print("=" * 80)
     input("Нажмите Enter, чтобы построить тепловую карту корреляций...")
 
@@ -104,47 +119,102 @@ def main():
     # Общая тепловая карта
     plot_correlation_heatmap(df, input_columns, output_columns,
                              save_folder=correlation_folder,
-                             title="Тепловая карта корреляций (исходные данные)")
+                             title="Тепловая карта корреляций (все данные)")
 
-    # Корреляции входных с выходными
-    if output_columns:
-        plot_correlation_with_target(df, output_columns, input_columns,
-                                     save_folder=correlation_folder)
+    # ============= 4. ПОИСК ЛУЧШЕГО ОКНА =============
+    print("\n" + "=" * 80)
+    print("4. ПОИСК ЛУЧШЕГО ОКНА ДАННЫХ")
+    print("=" * 80)
+    print("Этот анализ поможет найти участок данных, где корреляции между")
+    print("входными и выходными параметрами наиболее сильные.")
+    print("Будет найдено окно размером от 2000 строк с максимальной средней корреляцией.")
 
-    # Интерактивная настройка границ
-    print("\n" + "=" * 60)
-    print("ИНТЕРАКТИВНАЯ НАСТРОЙКА ГРАНИЦ")
-    print("=" * 60)
-    print("Теперь вы можете итеративно настраивать границы для каждого столбца.")
+    search_window = input("\nВыполнить поиск лучшего окна данных? (да/нет): ").strip().lower()
+
+    if search_window in ['да', 'yes', 'y', 'д']:
+        print("\n" + "=" * 80)
+        print("ПОИСК ЛУЧШЕГО ОКНА ДАННЫХ")
+        print("=" * 80)
+
+        best_window, best_window_data = find_best_window(df, input_columns, output_columns, min_window_size=2000)
+
+        if best_window is not None:
+            # Тепловая карта для лучшего окна
+            plot_best_window_heatmap(df, best_window, input_columns, output_columns, save_folder=correlation_folder)
+
+            # Графики сырых данных для лучшего окна
+            plot_window_raw_data(df, best_window, input_columns, output_columns, save_folder=correlation_folder)
+
+            # Сохраняем лучшее окно в CSV
+            start = best_window['start_row']
+            end = best_window['end_row']
+            window_file = os.path.join(plots_folder, f'best_window_rows_{start}_{end}.csv')
+            best_window_data.to_csv(window_file, index=False, encoding='utf-8-sig')
+            print(f"\nДанные лучшего окна сохранены в: {window_file}")
+
+            # Информация о лучшем окне
+            info_file = os.path.join(correlation_folder, 'best_window_info.txt')
+            with open(info_file, 'w', encoding='utf-8') as f:
+                f.write("ИНФОРМАЦИЯ О ЛУЧШЕМ ОКНЕ\n")
+                f.write("=" * 50 + "\n\n")
+                f.write(f"Строки: {start} - {end}\n")
+                f.write(f"Размер окна: {best_window['window_size']}\n")
+                f.write(f"Средняя корреляция: {best_window['mean_correlation']:.4f}\n")
+                f.write(f"Улучшение относительно всех данных: +{best_window['improvement']:.4f}\n")
+            print(f"Информация сохранена в: {info_file}")
+        else:
+            print("\nНе удалось найти подходящее окно. Возможно, недостаточно данных.")
+    else:
+        print("\nПоиск лучшего окна пропущен.")
+
+        # Создаем временную конфигурацию с границами 50%
+        temp_config = {}
+        for col in all_data_columns:
+            try:
+                data = pd.to_numeric(df[col], errors='coerce')
+                if not data.isna().all():
+                    mean_val = data.mean()
+                    temp_config[col] = {
+                        'mean': mean_val,
+                        'lower': mean_val * 0.5,
+                        'upper': mean_val * 1.5,
+                        'data_type': 'Входные' if col in input_columns else 'Выходные'
+                    }
+            except:
+                pass
+
+        # Создаем папку для начальных графиков с границами
+        initial_plots_folder = os.path.join(plots_folder, 'initial_plots')
+        if not os.path.exists(initial_plots_folder):
+            os.makedirs(initial_plots_folder)
+
+    # ============= 5. НАСТРОЙКА ГРАНИЦ =============
+    print("\n" + "=" * 80)
+    print("5. НАСТРОЙКА ГРАНИЦ ДЛЯ ВСЕХ ДАННЫХ")
+    print("=" * 80)
+    print("Теперь вы можете настроить границы для каждого столбца.")
     print("Начнем с границ ±50% от среднего значения.")
-    print("Вы сможете:")
-    print("  - Изменять нижнюю или верхнюю границу по отдельности")
-    print("  - Просматривать отдельные графики")
-    print("  - Сохранять настроенные графики")
-    print("  - Просматривать все графики с текущими настройками")
-    print("  - Настраивать каждый столбец индивидуально")
 
     input("\nНажмите Enter, чтобы начать настройку...")
 
     # Запускаем интерактивную настройку
     bounds_config = interactive_bounds_adjustment(df, all_data_columns, input_columns, output_columns, plots_folder)
 
-    # Показываем финальные графики до удаления
+    # ============= 6. ДАННЫЕ С НОВЫМИ ГРАНИЦАМИ =============
     print("\n" + "=" * 80)
-    print("ФИНАЛЬНЫЕ ГРАФИКИ С НАСТРОЕННЫМИ ГРАНИЦАМИ (ДО УДАЛЕНИЯ)")
+    print("6. ДАННЫЕ С НАСТРОЕННЫМИ ГРАНИЦАМИ")
     print("=" * 80)
-    input("Нажмите Enter, чтобы показать финальные графики до удаления...")
+    input("Нажмите Enter, чтобы показать графики с новыми границами...")
 
-    # Создаем папку для финальных графиков
     final_folder = os.path.join(plots_folder, 'final_plots_before_removal')
     if not os.path.exists(final_folder):
         os.makedirs(final_folder)
 
     plot_all_columns(df, bounds_config, input_columns, output_columns, final_folder)
 
-    # Спрашиваем, нужно ли удалить выбросы
+    # ============= 7. УДАЛЕНИЕ ВЫБРОСОВ =============
     print("\n" + "=" * 80)
-    print("УДАЛЕНИЕ ВЫБРОСОВ")
+    print("7. УДАЛЕНИЕ ВЫБРОСОВ")
     print("=" * 80)
     remove_choice = input("Хотите удалить строки с выбросами (точки за пределами границ)? (да/нет): ").strip().lower()
 
@@ -153,20 +223,22 @@ def main():
         df_cleaned, removed_indices, removal_report = remove_outliers(df, bounds_config, all_data_columns)
 
         if len(removed_indices) > 0:
-            # Строим тепловую карту для очищенных данных
+            # ============= 8. ОЧИЩЕННЫЕ ДАННЫЕ =============
             print("\n" + "=" * 80)
-            print("ТЕПЛОВАЯ КАРТА КОРРЕЛЯЦИЙ (ОЧИЩЕННЫЕ ДАННЫЕ)")
+            print("8. ОЧИЩЕННЫЕ ДАННЫЕ")
             print("=" * 80)
-            input("Нажмите Enter, чтобы построить тепловую карту для очищенных данных...")
+            input("Нажмите Enter, чтобы показать графики очищенных данных...")
 
-            plot_correlation_heatmap(df_cleaned, input_columns, output_columns,
-                                     save_folder=correlation_folder,
-                                     title="Тепловая карта корреляций (очищенные данные)")
+            after_removal_folder = os.path.join(plots_folder, 'final_plots_after_removal')
+            if not os.path.exists(after_removal_folder):
+                os.makedirs(after_removal_folder)
+
+            plot_all_columns(df_cleaned, bounds_config, input_columns, output_columns, after_removal_folder)
 
             # Сохраняем очищенные данные
             save_choice = input("\nСохранить очищенные данные в файл? (да/нет): ").strip().lower()
             if save_choice in ['да', 'yes', 'y', 'д']:
-                cleaned_path, info_path = save_cleaned_data(df_cleaned, 'ПП.csv', plots_folder)
+                cleaned_path, info_path = save_cleaned_data(df_cleaned, 'ПП_part.csv', plots_folder)
 
                 # Сохраняем информацию об удалении
                 with open(info_path, 'w', encoding='utf-8') as f:
@@ -186,18 +258,6 @@ def main():
 
                 print(f"Информация об удалении сохранена в: {info_path}")
 
-            # Показываем графики после удаления
-            print("\n" + "=" * 80)
-            print("ГРАФИКИ ПОСЛЕ УДАЛЕНИЯ ВЫБРОСОВ")
-            print("=" * 80)
-            input("Нажмите Enter, чтобы показать графики после удаления...")
-
-            after_removal_folder = os.path.join(plots_folder, 'final_plots_after_removal')
-            if not os.path.exists(after_removal_folder):
-                os.makedirs(after_removal_folder)
-
-            plot_all_columns(df_cleaned, bounds_config, input_columns, output_columns, after_removal_folder)
-
             # Выводим итоговую статистику
             print_final_statistics(df, df_cleaned, bounds_config, all_data_columns, removed_indices)
 
@@ -207,34 +267,22 @@ def main():
                 config_file = save_bounds_config(bounds_config, plots_folder)
                 print(f"Конфигурация сохранена в файл: {config_file}")
 
-            print("\n" + "=" * 60)
-            print(f"ВСЕ ГРАФИКИ СОХРАНЕНЫ В ПАПКУ: {plots_folder}")
-            print("ГОТОВО!")
-            print("=" * 60)
-
         else:
             print("\nВыбросов не обнаружено. Очистка не требуется.")
-            # Сохраняем конфигурацию границ
             save_config = input("\nСохранить конфигурацию границ в файл? (да/нет): ").strip().lower()
             if save_config in ['да', 'yes', 'y', 'д']:
                 config_file = save_bounds_config(bounds_config, plots_folder)
                 print(f"Конфигурация сохранена в файл: {config_file}")
-
-            print("\n" + "=" * 60)
-            print(f"ВСЕ ГРАФИКИ СОХРАНЕНЫ В ПАПКУ: {plots_folder}")
-            print("ГОТОВО!")
-            print("=" * 60)
     else:
-        # Сохраняем конфигурацию границ без удаления
         save_config = input("\nСохранить конфигурацию границ в файл? (да/нет): ").strip().lower()
         if save_config in ['да', 'yes', 'y', 'д']:
             config_file = save_bounds_config(bounds_config, plots_folder)
             print(f"Конфигурация сохранена в файл: {config_file}")
 
-        print("\n" + "=" * 60)
-        print(f"ВСЕ ГРАФИКИ СОХРАНЕНЫ В ПАПКУ: {plots_folder}")
-        print("ГОТОВО!")
-        print("=" * 60)
+    print("\n" + "=" * 60)
+    print(f"ВСЕ ГРАФИКИ СОХРАНЕНЫ В ПАПКУ: {plots_folder}")
+    print("ГОТОВО!")
+    print("=" * 60)
 
 
 if __name__ == "__main__":
