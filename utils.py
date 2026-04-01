@@ -143,7 +143,6 @@ def remove_outliers(df, bounds_config, all_columns):
     removed_mask = pd.Series(False, index=df.index)
 
     removal_report = {}
-    total_removed_rows = 0
 
     print("\n" + "=" * 80)
     print("ПРОВЕРКА ВЫБРОСОВ ДЛЯ УДАЛЕНИЯ")

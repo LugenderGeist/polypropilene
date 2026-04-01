@@ -5,7 +5,6 @@ import os
 from scipy import stats
 from scipy.signal import savgol_filter, find_peaks
 
-
 def detect_outliers_iqr(data, multiplier=1.5):
     """Метод межквартильного размаха (IQR)"""
     q1 = np.percentile(data, 25)
@@ -178,7 +177,7 @@ def apply_outlier_filter(df, column, method='iqr', **kwargs):
     outlier_count = outlier_mask.sum()
     outlier_percent = (outlier_count / original_count) * 100
 
-    stats = {
+    statis = {
         'original_count': original_count,
         'outlier_count': outlier_count,
         'outlier_percent': outlier_percent,
@@ -190,10 +189,10 @@ def apply_outlier_filter(df, column, method='iqr', **kwargs):
         'method': method_name
     }
 
-    return filtered_data, outlier_mask, bounds, stats
+    return filtered_data, outlier_mask, bounds, statis
 
 
-def visualize_outlier_filter(df, column, filtered_data, outlier_mask, bounds, stats, save_folder=None):
+def visualize_outlier_filter(df, column, filtered_data, outlier_mask, bounds, statis, save_folder=None):
     """
     Визуализация результата фильтрации выбросов
     """
@@ -207,7 +206,7 @@ def visualize_outlier_filter(df, column, filtered_data, outlier_mask, bounds, st
 
     if outlier_mask.sum() > 0:
         ax1.scatter(df.index[outlier_mask], data[outlier_mask],
-                    color='red', s=50, label=f'Выбросы ({stats["outlier_count"]})', zorder=5)
+                    color='red', s=50, label=f'Выбросы ({statis["outlier_count"]})', zorder=5)
 
     if bounds:
         ax1.axhline(y=bounds[0], color='orange', linestyle='--', alpha=0.7, label=f'Нижняя граница = {bounds[0]:.4f}')
@@ -255,20 +254,20 @@ def visualize_outlier_filter(df, column, filtered_data, outlier_mask, bounds, st
     СТАТИСТИКА ФИЛЬТРАЦИИ
     {'=' * 40}
 
-    Метод: {stats['method']}
+    Метод: {statis['method']}
 
     Исходные данные:
-      Количество: {stats['original_count']}
-      Среднее: {stats['original_mean']:.4f}
-      Стд: {stats['original_std']:.4f}
+      Количество: {statis['original_count']}
+      Среднее: {statis['original_mean']:.4f}
+      Стд: {statis['original_std']:.4f}
 
     Обнаружено выбросов:
-      Количество: {stats['outlier_count']}
-      Процент: {stats['outlier_percent']:.2f}%
+      Количество: {statis['outlier_count']}
+      Процент: {statis['outlier_percent']:.2f}%
 
     После фильтрации:
-      Среднее: {stats['filtered_mean']:.4f}
-      Стд: {stats['filtered_std']:.4f}
+      Среднее: {statis['filtered_mean']:.4f}
+      Стд: {statis['filtered_std']:.4f}
     """
 
     if bounds:

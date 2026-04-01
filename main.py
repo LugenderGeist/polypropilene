@@ -1,30 +1,14 @@
 import os
 import pandas as pd
-import numpy as np
+from interactive_menu import interactive_bounds_adjustment
 from utils import (load_data, create_plots_folder, setup_columns,
                    save_bounds_config, remove_outliers, save_cleaned_data)
-from visualization import (plot_all_columns, plot_raw_data, save_initial_plots,
-                           plot_correlation_heatmap, plot_correlation_with_target)
-from interactive_menu import interactive_bounds_adjustment
+from visualization import (plot_all_columns, plot_correlation_heatmap)
 from window_correlation_analysis import (find_best_window, plot_best_window_heatmap,
                                          plot_window_raw_data)
 
 
-def print_data_info(df):
-    """Выводит информацию о данных"""
-    print("\n" + "=" * 60)
-    print("ИНФОРМАЦИЯ О ДАННЫХ")
-    print("=" * 60)
-    print(f"Форма данных: {df.shape}")
-    print(f"Столбцы: {list(df.columns)}")
-    print(f"\nПервые 5 строк:")
-    print(df.head())
-    print(f"\nТипы данных:")
-    print(df.dtypes)
-
-
 def print_final_statistics(df_original, df_cleaned, bounds_config, all_columns, removed_indices):
-    """Выводит итоговую статистику по выбросам"""
     print("\n" + "=" * 80)
     print("ИТОГОВАЯ СТАТИСТИКА")
     print("=" * 80)
@@ -79,9 +63,6 @@ def main():
     if df is None:
         return
 
-    # Вывод информации о данных
-    print_data_info(df)
-
     # Настройка входных и выходных столбцов
     input_columns, output_columns = setup_columns(df)
     all_data_columns = input_columns + output_columns
@@ -92,9 +73,9 @@ def main():
 
     # ============= 1. СЫРЫЕ ДАННЫЕ БЕЗ ГРАНИЦ =============
     print("\n" + "=" * 80)
-    print("1. СЫРЫЕ ДАННЫЕ (БЕЗ ГРАНИЦ)")
+    print("1. СЫРЫЕ ДАННЫЕ")
     print("=" * 80)
-    input("Нажмите Enter, чтобы показать графики сырых данных без границ...")
+    input("Нажмите Enter, чтобы показать графики сырых данных...")
 
     # Создаем папку для сырых графиков
     raw_plots_folder = os.path.join(plots_folder, 'raw_plots')
@@ -106,11 +87,11 @@ def main():
     from visualization import plot_raw_data
     plot_raw_data(df, input_columns, output_columns, save_folder=raw_plots_folder)
 
-    # ============= 3. ТЕПЛОВАЯ КАРТА КОРРЕЛЯЦИЙ =============
+    # ============= 3. ТЕПЛОВАЯ КАРТА =============
     print("\n" + "=" * 80)
-    print("3. ТЕПЛОВАЯ КАРТА КОРРЕЛЯЦИЙ")
+    print("3. ТЕПЛОВАЯ КАРТА")
     print("=" * 80)
-    input("Нажмите Enter, чтобы построить тепловую карту корреляций...")
+    input("Нажмите Enter, чтобы построить тепловую карту...")
 
     correlation_folder = os.path.join(plots_folder, 'correlation_analysis')
     if not os.path.exists(correlation_folder):
@@ -119,7 +100,7 @@ def main():
     # Общая тепловая карта
     plot_correlation_heatmap(df, input_columns, output_columns,
                              save_folder=correlation_folder,
-                             title="Тепловая карта корреляций (все данные)")
+                             title="Тепловая карта")
 
     # ============= 4. ПОИСК ЛУЧШЕГО ОКНА =============
     print("\n" + "=" * 80)
@@ -188,23 +169,23 @@ def main():
         if not os.path.exists(initial_plots_folder):
             os.makedirs(initial_plots_folder)
 
-    # ============= 5. НАСТРОЙКА ГРАНИЦ =============
+    # ============= 5. ЧИСТКА ДАННЫХ =============
     print("\n" + "=" * 80)
-    print("5. НАСТРОЙКА ГРАНИЦ ДЛЯ ВСЕХ ДАННЫХ")
+    print("5. ВЫБОР МЕТОДОВ ДЛЯ ЧИСТКИ ДАННЫХ")
     print("=" * 80)
-    print("Теперь вы можете настроить границы для каждого столбца.")
-    print("Начнем с границ ±50% от среднего значения.")
+    print("Вы можете вручную выбрать границы, по которым можно очистить данные,")
+    print("или воспользоваться одним из фильтров.")
 
-    input("\nНажмите Enter, чтобы начать настройку...")
+    input("\nНажмите Enter, чтобы начать чистку...")
 
     # Запускаем интерактивную настройку
     bounds_config = interactive_bounds_adjustment(df, all_data_columns, input_columns, output_columns, plots_folder)
 
-    # ============= 6. ДАННЫЕ С НОВЫМИ ГРАНИЦАМИ =============
+    # ============= 6. ОЧИЩЕННЫЕ ДАННЫЕ =============
     print("\n" + "=" * 80)
-    print("6. ДАННЫЕ С НАСТРОЕННЫМИ ГРАНИЦАМИ")
+    print("6. ВЫДЕЛЕНИЕ ИСКЛЮЧАЕМЫХ ДАННЫХ")
     print("=" * 80)
-    input("Нажмите Enter, чтобы показать графики с новыми границами...")
+    input("Нажмите Enter, чтобы показать графики после применения фильтров...")
 
     final_folder = os.path.join(plots_folder, 'final_plots_before_removal')
     if not os.path.exists(final_folder):
@@ -216,7 +197,7 @@ def main():
     print("\n" + "=" * 80)
     print("7. УДАЛЕНИЕ ВЫБРОСОВ")
     print("=" * 80)
-    remove_choice = input("Хотите удалить строки с выбросами (точки за пределами границ)? (да/нет): ").strip().lower()
+    remove_choice = input("Хотите удалить отфильтрованные данные? (да/нет): ").strip().lower()
 
     if remove_choice in ['да', 'yes', 'y', 'д']:
         # Удаляем выбросы
@@ -246,15 +227,12 @@ def main():
                     f.write("=" * 50 + "\n\n")
                     f.write(f"Исходное количество строк: {len(df)}\n")
                     f.write(f"Удалено строк: {len(removed_indices)}\n")
-                    f.write(f"Осталось строк: {len(df_cleaned)}\n\n")
-                    f.write("Удаленные индексы:\n")
                     f.write(str(removed_indices) + "\n\n")
                     f.write("Детали по столбцам:\n")
                     for col, report in removal_report.items():
                         f.write(f"\n{col}:\n")
                         f.write(f"  Количество выбросов: {report['outlier_count']}\n")
                         f.write(f"  Процент выбросов: {report['outlier_percent']:.2f}%\n")
-                        f.write(f"  Индексы выбросов: {report['indices']}\n")
 
                 print(f"Информация об удалении сохранена в: {info_path}")
 
