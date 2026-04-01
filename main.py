@@ -10,19 +10,6 @@ from window_correlation_analysis import (find_best_window, plot_best_window_heat
                                          plot_window_raw_data, save_best_window_data)
 
 
-def print_data_info(df):
-    """Выводит информацию о данных"""
-    print("\n" + "=" * 60)
-    print("ИНФОРМАЦИЯ О ДАННЫХ")
-    print("=" * 60)
-    print(f"Форма данных: {df.shape}")
-    print(f"Столбцы: {list(df.columns)}")
-    print(f"\nПервые 5 строк:")
-    print(df.head())
-    print(f"\nТипы данных:")
-    print(df.dtypes)
-
-
 def main():
     # ============= ЗАГРУЗКА ДАННЫХ =============
     print("=" * 60)
@@ -35,15 +22,12 @@ def main():
     if df is None:
         return
 
-    print_data_info(df)
-
     # Настройка входных и выходных столбцов
     input_columns, output_columns = setup_columns(df)
     all_data_columns = input_columns + output_columns
 
     # Создаем основную папку для сохранения графиков
     main_plots_folder = create_plots_folder()
-    print(f"\nСоздана основная папка для сохранения: {main_plots_folder}")
 
     # ============= 1. ИСХОДНЫЕ ДАННЫЕ =============
     print("\n" + "=" * 80)
@@ -55,7 +39,7 @@ def main():
     if not os.path.exists(raw_data_folder):
         os.makedirs(raw_data_folder)
 
-    print("\n1.1. Графики сырых данных (без границ)")
+    print("\n1.1. Графики сырых данных")
     input("Нажмите Enter, чтобы показать графики...")
     plot_raw_data(df, input_columns, output_columns, save_folder=raw_data_folder)
 
@@ -64,8 +48,6 @@ def main():
     plot_correlation_heatmap(df, input_columns, output_columns,
                              save_folder=raw_data_folder,
                              title="Тепловая карта корреляций (исходные данные)")
-
-    print(f"\n✅ Все графики исходных данных сохранены в: {raw_data_folder}")
 
     # ============= 2. ВЫБОР РЕЖИМА РАБОТЫ =============
     print("\n" + "=" * 80)
@@ -216,9 +198,6 @@ def main():
     print("\n" + "=" * 80)
     print("3. ПОИСК ЛУЧШЕГО ОКНА ДАННЫХ")
     print("=" * 80)
-    print("Этот анализ поможет найти участок данных, где корреляции между")
-    print("входными и выходными параметрами наиболее сильные.")
-    print("Будет найдено окно размером от 2000 строк с максимальной средней корреляцией.")
 
     search_window = input("\nВыполнить поиск лучшего окна данных? (да/нет): ").strip().lower()
 
@@ -243,12 +222,6 @@ def main():
             start = best_window['start_row']
             end = best_window['end_row']
 
-            print(f"\n✅ Найдено лучшее окно:")
-            print(f"  Строки: {start} - {end}")
-            print(f"  Размер окна: {best_window['window_size']} строк")
-            print(f"  Средняя корреляция: {best_window['mean_correlation']:.4f}")
-            print(f"  Улучшение относительно всех данных: +{best_window['improvement']:.4f}")
-
             # Сохраняем данные и графики окна
             save_best_window_data(df_processed, best_window, input_columns, output_columns, best_window_folder)
 
@@ -265,170 +238,95 @@ def main():
         print("\nПоиск лучшего окна пропущен.")
 
     # ============= 4. ПОСТРОЕНИЕ МОДЕЛИ =============
-    print("\n" + "=" * 80)
-    print("4. ПОСТРОЕНИЕ МОДЕЛИ")
-    print("=" * 80)
+    # Создаем папку для результатов моделирования
+    modeling_folder = os.path.join(main_plots_folder, '04_modeling_results')
+    if not os.path.exists(modeling_folder):
+        os.makedirs(modeling_folder)
 
-    # Выбор данных для моделирования
-    if best_window is not None:
-        use_window = input(
-            f"\nИспользовать лучшее окно (строки {best_window['start_row']}-{best_window['end_row']}) для моделирования? (да/нет): ").strip().lower()
-        if use_window in ['да', 'yes', 'y', 'д']:
-            data_for_model = best_window_data
-            print(f"\nМодель будет построена на данных лучшего окна ({len(data_for_model)} строк)")
-            model_data_source = "best_window"
+    # Цикл выбора модели
+    while True:
+        print("\n" + "=" * 80)
+        print("4. ПОСТРОЕНИЕ МОДЕЛИ")
+        print("=" * 80)
+
+        # Выбор данных для моделирования
+        if best_window is not None:
+            use_window = input(
+                f"\nИспользовать лучшее окно (строки {best_window['start_row']}-{best_window['end_row']}) для моделирования? (да/нет): ").strip().lower()
+            if use_window in ['да', 'yes', 'y', 'д']:
+                data_for_model = best_window_data
+                print(f"\nМодель будет построена на данных лучшего окна ({len(data_for_model)} строк)")
+            else:
+                data_for_model = df_processed
+                print(f"\nМодель будет построена на всех данных ({len(data_for_model)} строк)")
         else:
             data_for_model = df_processed
             print(f"\nМодель будет построена на всех данных ({len(data_for_model)} строк)")
-            model_data_source = "all_data"
-    else:
-        data_for_model = df_processed
-        print(f"\nМодель будет построена на всех данных ({len(data_for_model)} строк)")
-        model_data_source = "all_data"
 
-    print("\nВыберите тип модели:")
-    print("1. Random Forest")
-    print("2. XGBoost")
-    print("3. Сравнить обе модели")
-    print("4. Ансамбль (Random Forest + XGBoost)")
+        print("\nВыберите действие:")
+        print("1. Обучить Random Forest")
+        print("2. Обучить XGBoost")
+        print("3. Завершить работу")
 
-    model_type_choice = input("\nВаш выбор (1/2/3/4): ").strip()
+        model_choice = input("\nВаш выбор (1/2/3): ").strip()
 
-    if model_type_choice in ['1', '2', '3', '4']:
-        try:
-            from modeling import (build_random_forest_model, build_xgboost_model,
-                                  build_ensemble_model, plot_model_comparison,
-                                  plot_feature_importance_comparison)
+        if model_choice == '1':
+            # Random Forest
+            try:
+                from modeling import build_random_forest_model
 
-            # Создаем папку для результатов моделирования
-            modeling_folder = os.path.join(main_plots_folder, '04_modeling_results')
-            if not os.path.exists(modeling_folder):
-                os.makedirs(modeling_folder)
-
-            rf_results = None
-            xgb_results = None
-
-            if model_type_choice == '1':
-                # Только Random Forest
                 print("\n" + "=" * 80)
                 print("ПОСТРОЕНИЕ МОДЕЛИ RANDOM FOREST")
                 print("=" * 80)
+
                 results, model, importance = build_random_forest_model(
                     data_for_model, input_columns, output_columns,
                     save_folder=modeling_folder,
                     test_size=0.2,
                     random_state=42
                 )
-                rf_results = results
 
-            elif model_type_choice == '2':
-                # Только XGBoost
+                if results:
+                    print(f"\n✅ Модель Random Forest обучена")
+                    print(f"   Результаты сохранены в: {modeling_folder}")
+
+            except ImportError as e:
+                print(f"Ошибка импорта: {e}")
+            except Exception as e:
+                print(f"Ошибка при построении модели: {e}")
+
+        elif model_choice == '2':
+            # XGBoost
+            try:
+                from modeling import build_xgboost_model
+
                 print("\n" + "=" * 80)
                 print("ПОСТРОЕНИЕ МОДЕЛИ XGBOOST")
                 print("=" * 80)
+
                 results, model, importance = build_xgboost_model(
                     data_for_model, input_columns, output_columns,
                     save_folder=modeling_folder,
                     test_size=0.2,
                     random_state=42
                 )
-                xgb_results = results
 
-            elif model_type_choice == '3':
-                # Сравнить обе модели
-                print("\n" + "=" * 80)
-                print("ПОСТРОЕНИЕ И СРАВНЕНИЕ МОДЕЛЕЙ")
-                print("=" * 80)
+                if results:
+                    print(f"\n✅ Модель XGBoost обучена")
+                    print(f"   Результаты сохранены в: {modeling_folder}")
 
-                # Random Forest
-                rf_results, rf_model, rf_importance = build_random_forest_model(
-                    data_for_model, input_columns, output_columns,
-                    save_folder=modeling_folder,
-                    test_size=0.2,
-                    random_state=42
-                )
-
-                # XGBoost
-                xgb_results, xgb_model, xgb_importance = build_xgboost_model(
-                    data_for_model, input_columns, output_columns,
-                    save_folder=modeling_folder,
-                    test_size=0.2,
-                    random_state=42
-                )
-
-                # Сравниваем метрики
-                print("\n" + "=" * 80)
-                print("СРАВНЕНИЕ МОДЕЛЕЙ")
-                print("=" * 80)
-
-                if rf_results and xgb_results:
-                    print(f"\nRandom Forest - R²: {rf_results['r2_test']:.4f}")
-                    print(f"XGBoost - R²: {xgb_results['r2_test']:.4f}")
-
-                    if rf_results['r2_test'] > xgb_results['r2_test']:
-                        print(f"\n🎉 Лучшая модель: Random Forest (R² = {rf_results['r2_test']:.4f})")
-                    else:
-                        print(f"\n🎉 Лучшая модель: XGBoost (R² = {xgb_results['r2_test']:.4f})")
-
-                    # Графики сравнения
-                    plot_model_comparison(rf_results, xgb_results, save_folder=modeling_folder)
-                    plot_feature_importance_comparison(rf_importance, xgb_importance,
-                                                       save_folder=modeling_folder, top_n=10)
-
-            elif model_type_choice == '4':
-                # Ансамбль
-                print("\n" + "=" * 80)
-                print("ПОСТРОЕНИЕ АНСАМБЛЯ МОДЕЛЕЙ")
-                print("=" * 80)
-
-                ensemble_results = build_ensemble_model(
-                    data_for_model, input_columns, output_columns,
-                    save_folder=modeling_folder,
-                    test_size=0.2,
-                    random_state=42
-                )
-
-                if ensemble_results:
-                    print(f"\nАнсамбль (Random Forest + XGBoost):")
-                    print(f"  R² = {ensemble_results['r2_ensemble']:.4f}")
-                    print(f"  RMSE = {ensemble_results['rmse_ensemble']:.4f}")
-                    print(f"  MAE = {ensemble_results['mae_ensemble']:.4f}")
-
-            # Вывод итоговой оценки
-            if rf_results:
-                print("\n" + "=" * 80)
-                print("ИТОГОВАЯ ОЦЕНКА (Random Forest)")
-                print("=" * 80)
-                print(f"R² на тестовой выборке: {rf_results['r2_test']:.4f}")
-                if rf_results['r2_test'] < 0.3:
-                    print("⚠️ Слабая предсказательная способность")
-                elif rf_results['r2_test'] < 0.6:
-                    print("✅ Умеренная предсказательная способность")
-                else:
-                    print("🎉 Высокая предсказательная способность")
-
-            if xgb_results:
-                print("\n" + "=" * 80)
-                print("ИТОГОВАЯ ОЦЕНКА (XGBoost)")
-                print("=" * 80)
-                print(f"R² на тестовой выборке: {xgb_results['r2_test']:.4f}")
-                if xgb_results['r2_test'] < 0.3:
-                    print("⚠️ Слабая предсказательная способность")
-                elif xgb_results['r2_test'] < 0.6:
-                    print("✅ Умеренная предсказательная способность")
-                else:
-                    print("🎉 Высокая предсказательная способность")
-
-            print(f"\n✅ Результаты моделирования сохранены в: {modeling_folder}")
-
-        except ImportError as e:
-            print(f"Ошибка импорта: {e}")
-            if model_type_choice in ['2', '3', '4']:
+            except ImportError as e:
+                print(f"Ошибка импорта: {e}")
                 print("Для XGBoost выполните: pip install xgboost")
-        except Exception as e:
-            print(f"Ошибка при построении модели: {e}")
-    else:
-        print("\nПостроение модели пропущено.")
+            except Exception as e:
+                print(f"Ошибка при построении модели: {e}")
+
+        elif model_choice == '3':
+            print("\nЗавершение работы с моделями...")
+            break
+
+        else:
+            print("Неверный выбор. Пожалуйста, выберите 1, 2 или 3.")
 
     # ============= ИТОГОВАЯ ИНФОРМАЦИЯ =============
     print("\n" + "=" * 60)
@@ -445,6 +343,7 @@ def main():
     print("\n" + "=" * 60)
     print("ГОТОВО!")
     print("=" * 60)
+
 
 if __name__ == "__main__":
     main()

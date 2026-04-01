@@ -29,10 +29,6 @@ def find_best_window(df, input_columns, output_columns, min_window_size=2000):
     # Берем первый выходной столбец
     target = output_columns[0]
 
-    print("\n" + "=" * 80)
-    print(f"ПОИСК ЛУЧШЕГО ОКНА ДАННЫХ ДЛЯ {target}")
-    print("=" * 80)
-
     # Подготавливаем данные
     data = df[input_columns + [target]].copy().dropna()
 
@@ -161,8 +157,6 @@ def plot_best_window_heatmap(df, best_window, input_columns, output_columns, sav
     if save_folder:
         save_path = os.path.join(save_folder, 'best_window_heatmap.png')
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
-        print(f"Тепловая карта лучшего окна сохранена: {save_path}")
-
     plt.show()
 
 
@@ -225,8 +219,6 @@ def plot_window_raw_data(df, best_window, input_columns, output_columns, save_fo
     if save_folder:
         save_path = os.path.join(save_folder, 'best_window_raw_data.png')
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
-        print(f"График сырых данных лучшего окна сохранен: {save_path}")
-
     plt.show()
 
 
@@ -241,7 +233,6 @@ def save_best_window_data(df, best_window, input_columns, output_columns, save_f
     # Сохраняем CSV
     csv_file = os.path.join(save_folder, f'best_window_rows_{start}_{end}.csv')
     window_data.to_csv(csv_file, index=False, encoding='utf-8-sig')
-    print(f"📁 CSV сохранен: {csv_file}")
 
     # Сохраняем мета-информацию
     info_file = os.path.join(save_folder, f'best_window_info_{start}_{end}.txt')
@@ -278,7 +269,5 @@ def save_best_window_data(df, best_window, input_columns, output_columns, save_f
         f.write("\nВЫХОДНЫЕ ПРИЗНАКИ:\n")
         for col in output_columns:
             f.write(f"  {col}: μ={window_data[col].mean():.6f}, σ={window_data[col].std():.6f}\n")
-
-    print(f"📄 Информация сохранена: {info_file}")
 
     return csv_file

@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 
+
 # Функция для определения кодировки файла
 def detect_encoding(file_path):
     with open(file_path, 'rb') as f:
@@ -11,14 +12,15 @@ def detect_encoding(file_path):
         result = chardet.detect(raw_data)
         return result['encoding']
 
+
 # Функция для преобразования всех столбцов в числовой формат
 def convert_to_numeric(df):
     """Преобразует все столбцы DataFrame в числовой формат где возможно"""
     df_numeric = df.copy()
     for col in df_numeric.columns:
-        # Пробуем преобразовать в числовой формат
         df_numeric[col] = pd.to_numeric(df_numeric[col], errors='coerce')
     return df_numeric
+
 
 # Функция для загрузки данных с определением кодировки
 def load_data(file_path):
@@ -30,12 +32,6 @@ def load_data(file_path):
 
         # Преобразуем все столбцы в числовой формат
         df = convert_to_numeric(df)
-
-        # Выводим информацию о типах данных после преобразования
-        print("\nТипы данных после преобразования в числа:")
-        for col in df.columns:
-            non_null = df[col].notna().sum()
-            print(f"  {col}: {df[col].dtype} (непустых: {non_null})")
 
         print("Файл успешно загружен и преобразован в числовой формат!")
         return df, encoding
@@ -55,6 +51,7 @@ def load_data(file_path):
                 continue
         print("Не удалось загрузить файл")
         return None, None
+
 
 # Функция для создания папки для графиков
 def create_plots_folder():
@@ -80,20 +77,10 @@ def save_bounds_config(bounds_config, save_folder):
             f.write(f"  Верхняя граница: {config['upper']:.6f}\n\n")
     return config_file
 
+
 # Функция для настройки входных и выходных столбцов
 def setup_columns(df):
-    """Интерактивная настройка количества входных и выходных столбцов"""
-    print("\n" + "=" * 60)
-    print("НАСТРОЙКА ВХОДНЫХ И ВЫХОДНЫХ ДАННЫХ")
-    print("=" * 60)
-
     total_cols = df.shape[1]
-
-    # Показываем статистику по столбцам
-    print("\nСтатистика по столбцам (количество непустых значений):")
-    for col in df.columns:
-        non_null = df[col].notna().sum()
-        print(f"  {col}: {non_null} значений")
 
     while True:
         try:
@@ -113,26 +100,12 @@ def setup_columns(df):
     input_columns = df.columns[:input_cols].tolist()
     output_columns = df.columns[-output_cols:].tolist() if output_cols > 0 else []
 
-    print(f"\nВходные столбцы ({len(input_columns)}): {input_columns}")
-    print(f"Выходные столбцы ({len(output_columns)}): {output_columns}")
-
     return input_columns, output_columns
-
 
 # Функция для удаления выбросов из данных
 def remove_outliers(df, bounds_config, all_columns):
     """
     Удаляет строки, в которых хотя бы один столбец имеет значение за пределами границ
-
-    Parameters:
-    - df: исходный DataFrame
-    - bounds_config: конфигурация границ для каждого столбца
-    - all_columns: список столбцов для проверки
-
-    Returns:
-    - df_cleaned: очищенный DataFrame
-    - removed_indices: индексы удаленных строк
-    - removal_report: отчет об удалении
     """
     df_cleaned = df.copy()
     removed_mask = pd.Series(False, index=df.index)
@@ -149,7 +122,6 @@ def remove_outliers(df, bounds_config, all_columns):
                 data = pd.to_numeric(df[col], errors='coerce')
                 config = bounds_config[col]
 
-                # Находим выбросы в текущем столбце
                 outlier_mask = (data < config['lower']) | (data > config['upper'])
                 outlier_count = outlier_mask.sum()
 
@@ -159,8 +131,6 @@ def remove_outliers(df, bounds_config, all_columns):
                         'outlier_percent': (outlier_count / len(data)) * 100,
                         'indices': df.index[outlier_mask].tolist()
                     }
-
-                    # Объединяем маски (если строка имеет выброс в любом столбце)
                     removed_mask = removed_mask | outlier_mask
 
                     print(f"\n{col} ({config['data_type']}):")
@@ -173,10 +143,7 @@ def remove_outliers(df, bounds_config, all_columns):
     total_removed_rows = removed_mask.sum()
 
     if total_removed_rows > 0:
-        # Сохраняем индексы удаленных строк
         removed_indices = df.index[removed_mask].tolist()
-
-        # Удаляем строки с выбросами
         df_cleaned = df_cleaned[~removed_mask]
 
         print("\n" + "=" * 80)
@@ -185,7 +152,6 @@ def remove_outliers(df, bounds_config, all_columns):
         print(f"Всего удалено строк: {total_removed_rows} из {len(df)} ({total_removed_rows / len(df) * 100:.2f}%)")
         print(f"Осталось строк: {len(df_cleaned)}")
 
-        # Показываем статистику по удаленным строкам
         if len(removed_indices) <= 20:
             print(f"Удаленные индексы: {removed_indices}")
         else:
@@ -201,16 +167,13 @@ def remove_outliers(df, bounds_config, all_columns):
 # Функция для сохранения очищенных данных
 def save_cleaned_data(df_cleaned, original_filename, save_folder):
     """Сохраняет очищенные данные в новый CSV файл"""
-    # Создаем имя файла
     base_name = os.path.splitext(original_filename)[0]
     cleaned_filename = f"{base_name}_cleaned.csv"
     cleaned_path = os.path.join(save_folder, cleaned_filename)
 
-    # Сохраняем данные
     df_cleaned.to_csv(cleaned_path, index=False, encoding='utf-8-sig')
     print(f"\nОчищенные данные сохранены в: {cleaned_path}")
 
-    # Также создаем путь для информации об удалении
     info_filename = f"{base_name}_removal_info.txt"
     info_path = os.path.join(save_folder, info_filename)
 

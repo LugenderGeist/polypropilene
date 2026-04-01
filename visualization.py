@@ -231,7 +231,6 @@ def plot_raw_data(df, input_columns, output_columns, save_folder=None):
             os.makedirs(save_folder)
         save_path = os.path.join(save_folder, 'all_raw_plots.png')
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
-        print(f"Общий график сырых данных сохранен: {save_path}")
 
     plt.show()
 
@@ -303,7 +302,6 @@ def plot_correlation_heatmap(df, input_columns, output_columns, save_folder=None
     if save_folder:
         save_path = os.path.join(save_folder, 'correlation_heatmap.png')
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
-        print(f"Тепловая карта корреляций сохранена: {save_path}")
 
     plt.show()
 
