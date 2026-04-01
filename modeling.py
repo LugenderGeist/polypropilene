@@ -12,7 +12,6 @@ warnings.filterwarnings('ignore')
 # Попытка импорта XGBoost
 try:
     import xgboost as xgb
-
     XGB_AVAILABLE = True
 except ImportError:
     XGB_AVAILABLE = False
@@ -34,14 +33,14 @@ def build_random_forest_model(df, input_columns, output_columns, save_folder=Non
     print("=" * 80)
 
     # Подготовка данных
-    X = df[input_columns].copy()
+    x = df[input_columns].copy()
     y = df[target].copy()
 
-    if len(X) < 10:
+    if len(x) < 10:
         print("Ошибка: недостаточно данных")
         return None, None, None
 
-    X = X.fillna(X.mean())
+    x = x.fillna(x.mean())
     y = y.fillna(y.mean())
 
     if y.std() == 0:
@@ -49,8 +48,8 @@ def build_random_forest_model(df, input_columns, output_columns, save_folder=Non
         return None, None, None
 
     # Разделение на train/test
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=test_size, random_state=random_state
+    x_train, x_test, y_train, y_test = train_test_split(
+        x, y, test_size=test_size, random_state=random_state
     )
 
     # Параметры для Random Forest
@@ -68,13 +67,13 @@ def build_random_forest_model(df, input_columns, output_columns, save_folder=Non
 
     # Обучаем Random Forest
     rf = RandomForestRegressor(**rf_params)
-    rf.fit(X_train, y_train)
+    rf.fit(x_train, y_train)
 
     oob_score = rf.oob_score_
 
     # Предсказания
-    y_train_pred = rf.predict(X_train)
-    y_test_pred = rf.predict(X_test)
+    y_train_pred = rf.predict(x_train)
+    y_test_pred = rf.predict(x_test)
 
     # Метрики
     r2_train = r2_score(y_train, y_train_pred)
@@ -85,7 +84,7 @@ def build_random_forest_model(df, input_columns, output_columns, save_folder=Non
     mae_test = mean_absolute_error(y_test, y_test_pred)
 
     # Вывод в терминал
-    print(f"\nРазмер выборок: обучающая={len(X_train)}, тестовая={len(X_test)}")
+    print(f"\nРазмер выборок: обучающая={len(x_train)}, тестовая={len(x_test)}")
     print(f"\nОбучающая выборка:")
     print(f"  R² = {r2_train:.4f}")
     print(f"  RMSE = {rmse_train:.4f}")
@@ -109,10 +108,6 @@ def build_random_forest_model(df, input_columns, output_columns, save_folder=Non
         'importance_rf': rf.feature_importances_
     }).sort_values('importance_rf', ascending=False)
 
-    print("\nТоп-5 важных признаков:")
-    for i, row in feature_importance.head(5).iterrows():
-        print(f"  {i + 1}. {row['feature']}: {row['importance_rf']:.4f} ({row['importance_rf'] * 100:.2f}%)")
-
     results = {
         'model_type': 'random_forest',
         'r2_train': r2_train,
@@ -129,8 +124,8 @@ def build_random_forest_model(df, input_columns, output_columns, save_folder=Non
         'y_train': y_train,
         'y_train_pred': y_train_pred,
         'model_params': rf_params,
-        'n_train': len(X_train),
-        'n_test': len(X_test)
+        'n_train': len(x_train),
+        'n_test': len(x_test)
     }
 
     # Визуализация
@@ -165,14 +160,14 @@ def build_xgboost_model(df, input_columns, output_columns, save_folder=None,
     print("=" * 80)
 
     # Подготовка данных
-    X = df[input_columns].copy()
+    x = df[input_columns].copy()
     y = df[target].copy()
 
-    if len(X) < 10:
+    if len(x) < 10:
         print("Ошибка: недостаточно данных")
         return None, None, None
 
-    X = X.fillna(X.mean())
+    x = x.fillna(x.mean())
     y = y.fillna(y.mean())
 
     if y.std() == 0:
@@ -180,8 +175,8 @@ def build_xgboost_model(df, input_columns, output_columns, save_folder=None,
         return None, None, None
 
     # Разделение на train/test
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=test_size, random_state=random_state
+    x_train, x_test, y_train, y_test = train_test_split(
+        x, y, test_size=test_size, random_state=random_state
     )
 
     # Параметры для XGBoost
@@ -201,11 +196,11 @@ def build_xgboost_model(df, input_columns, output_columns, save_folder=None,
 
     # Обучаем XGBoost
     xgb_model = xgb.XGBRegressor(**xgb_params)
-    xgb_model.fit(X_train, y_train, verbose=False)
+    xgb_model.fit(x_train, y_train, verbose=False)
 
     # Предсказания
-    y_train_pred = xgb_model.predict(X_train)
-    y_test_pred = xgb_model.predict(X_test)
+    y_train_pred = xgb_model.predict(x_train)
+    y_test_pred = xgb_model.predict(x_test)
 
     # Метрики
     r2_train = r2_score(y_train, y_train_pred)
@@ -216,7 +211,7 @@ def build_xgboost_model(df, input_columns, output_columns, save_folder=None,
     mae_test = mean_absolute_error(y_test, y_test_pred)
 
     # Вывод в терминал
-    print(f"\nРазмер выборок: обучающая={len(X_train)}, тестовая={len(X_test)}")
+    print(f"\nРазмер выборок: обучающая={len(x_train)}, тестовая={len(x_test)}")
     print(f"\nОбучающая выборка:")
     print(f"  R² = {r2_train:.4f}")
     print(f"  RMSE = {rmse_train:.4f}")
@@ -259,8 +254,8 @@ def build_xgboost_model(df, input_columns, output_columns, save_folder=None,
         'y_train': y_train,
         'y_train_pred': y_train_pred,
         'model_params': xgb_params,
-        'n_train': len(X_train),
-        'n_test': len(X_test)
+        'n_train': len(x_train),
+        'n_test': len(x_test)
     }
 
     # Визуализация
@@ -292,14 +287,14 @@ def build_ensemble_model(df, input_columns, output_columns, save_folder=None,
     print("=" * 80)
 
     # Подготовка данных
-    X = df[input_columns].copy()
+    x = df[input_columns].copy()
     y = df[target].copy()
 
-    if len(X) < 10:
+    if len(x) < 10:
         print("Ошибка: недостаточно данных")
         return None
 
-    X = X.fillna(X.mean())
+    x = x.fillna(x.mean())
     y = y.fillna(y.mean())
 
     if y.std() == 0:
@@ -307,11 +302,11 @@ def build_ensemble_model(df, input_columns, output_columns, save_folder=None,
         return None
 
     # Разделение
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=test_size, random_state=random_state
+    x_train, x_test, y_train, y_test = train_test_split(
+        x, y, test_size=test_size, random_state=random_state
     )
 
-    print(f"\nРазмер выборок: обучающая={len(X_train)}, тестовая={len(X_test)}")
+    print(f"\nРазмер выборок: обучающая={len(x_train)}, тестовая={len(x_test)}")
 
     # Обучаем Random Forest
     print("\nОбучение Random Forest...")
@@ -324,8 +319,8 @@ def build_ensemble_model(df, input_columns, output_columns, save_folder=None,
         'n_jobs': -1
     }
     rf = RandomForestRegressor(**rf_params)
-    rf.fit(X_train, y_train)
-    y_pred_rf = rf.predict(X_test)
+    rf.fit(x_train, y_train)
+    y_pred_rf = rf.predict(x_test)
     r2_rf = r2_score(y_test, y_pred_rf)
 
     print(f"Random Forest R²: {r2_rf:.4f}")
@@ -344,8 +339,8 @@ def build_ensemble_model(df, input_columns, output_columns, save_folder=None,
             'verbosity': 0
         }
         xgb_model = xgb.XGBRegressor(**xgb_params)
-        xgb_model.fit(X_train, y_train, verbose=False)
-        y_pred_xgb = xgb_model.predict(X_test)
+        xgb_model.fit(x_train, y_train, verbose=False)
+        y_pred_xgb = xgb_model.predict(x_test)
         r2_xgb = r2_score(y_test, y_pred_xgb)
 
         print(f"XGBoost R²: {r2_xgb:.4f}")

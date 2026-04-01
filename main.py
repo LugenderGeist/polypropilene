@@ -177,7 +177,6 @@ def main():
 
     else:
         print("Неверный выбор. Используется полный режим по умолчанию.")
-        mode_choice = '1'
         df_processed = df.copy()
         bounds_config = {}
         for col in all_data_columns:
@@ -219,9 +218,6 @@ def main():
                                                          min_window_size=2000)
 
         if best_window is not None:
-            start = best_window['start_row']
-            end = best_window['end_row']
-
             # Сохраняем данные и графики окна
             save_best_window_data(df_processed, best_window, input_columns, output_columns, best_window_folder)
 

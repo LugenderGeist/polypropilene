@@ -209,7 +209,7 @@ def plot_window_raw_data(df, best_window, input_columns, output_columns, save_fo
             ax.text(0.5, 0.5, f'Ошибка: {str(e)}', ha='center', va='center', transform=ax.transAxes)
             ax.set_title(f'{column}\n({data_type})', fontsize=10, fontweight='bold')
 
-    # Убираем лишние подграфики
+    # Убираем лишние графики
     for idx in range(len(all_cols), len(axes)):
         axes[idx].set_visible(False)
 
