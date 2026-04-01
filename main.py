@@ -1,58 +1,30 @@
 import os
 import pandas as pd
-from interactive_menu import interactive_bounds_adjustment
+import numpy as np
 from utils import (load_data, create_plots_folder, setup_columns,
                    save_bounds_config, remove_outliers, save_cleaned_data)
-from visualization import (plot_all_columns, plot_correlation_heatmap)
+from visualization import (plot_all_columns, plot_raw_data, save_initial_plots,
+                           plot_correlation_heatmap, plot_correlation_with_target)
+from interactive_menu import interactive_bounds_adjustment
 from window_correlation_analysis import (find_best_window, plot_best_window_heatmap,
-                                         plot_window_raw_data)
+                                         plot_window_raw_data, save_best_window_data)
 
 
-def print_final_statistics(df_original, df_cleaned, bounds_config, all_columns, removed_indices):
-    print("\n" + "=" * 80)
-    print("ИТОГОВАЯ СТАТИСТИКА")
-    print("=" * 80)
-
-    print(f"\nИсходное количество строк: {len(df_original)}")
-    print(f"Количество строк после удаления: {len(df_cleaned)}")
-    print(f"Удалено строк: {len(removed_indices)} ({len(removed_indices) / len(df_original) * 100:.2f}%)")
-
-    if len(removed_indices) > 0:
-        print(f"\nУдаленные индексы: {removed_indices[:20]}" +
-              ("..." if len(removed_indices) > 20 else ""))
-
-    # Статистика по каждому столбцу
-    print("\n" + "=" * 80)
-    print("СТАТИСТИКА ПО СТОЛБЦАМ ПОСЛЕ УДАЛЕНИЯ")
-    print("=" * 80)
-
-    for col in all_columns:
-        if col in bounds_config:
-            try:
-                data_original = pd.to_numeric(df_original[col], errors='coerce')
-                data_cleaned = pd.to_numeric(df_cleaned[col], errors='coerce')
-                config = bounds_config[col]
-
-                mean_before = data_original.mean()
-                mean_after = data_cleaned.mean()
-                std_before = data_original.std()
-                std_after = data_cleaned.std()
-
-                print(f"\n{col} ({config['data_type']}):")
-                print(f"  Границы: [{config['lower']:.4f}, {config['upper']:.4f}]")
-                print(f"  До удаления - Среднее: {mean_before:.4f}, Стд: {std_before:.4f}")
-                print(f"  После удаления - Среднее: {mean_after:.4f}, Стд: {std_after:.4f}")
-                if mean_before != 0:
-                    print(f"  Изменение среднего: {((mean_after - mean_before) / mean_before * 100):.2f}%")
-                if std_before != 0:
-                    print(f"  Изменение стд: {((std_after - std_before) / std_before * 100):.2f}%")
-
-            except Exception as e:
-                print(f"\n{col}: Ошибка - {str(e)}")
+def print_data_info(df):
+    """Выводит информацию о данных"""
+    print("\n" + "=" * 60)
+    print("ИНФОРМАЦИЯ О ДАННЫХ")
+    print("=" * 60)
+    print(f"Форма данных: {df.shape}")
+    print(f"Столбцы: {list(df.columns)}")
+    print(f"\nПервые 5 строк:")
+    print(df.head())
+    print(f"\nТипы данных:")
+    print(df.dtypes)
 
 
 def main():
-    # Загрузка данных
+    # ============= ЗАГРУЗКА ДАННЫХ =============
     print("=" * 60)
     print("ЗАГРУЗКА ДАННЫХ")
     print("=" * 60)
@@ -63,92 +35,68 @@ def main():
     if df is None:
         return
 
+    print_data_info(df)
+
     # Настройка входных и выходных столбцов
     input_columns, output_columns = setup_columns(df)
     all_data_columns = input_columns + output_columns
 
-    # Создаем папку для сохранения графиков
-    plots_folder = create_plots_folder()
-    print(f"\nСоздана папка для сохранения графиков: {plots_folder}")
+    # Создаем основную папку для сохранения графиков
+    main_plots_folder = create_plots_folder()
+    print(f"\nСоздана основная папка для сохранения: {main_plots_folder}")
 
-    # ============= 1. СЫРЫЕ ДАННЫЕ БЕЗ ГРАНИЦ =============
+    # ============= 1. ИСХОДНЫЕ ДАННЫЕ =============
     print("\n" + "=" * 80)
-    print("1. СЫРЫЕ ДАННЫЕ")
+    print("1. ИСХОДНЫЕ ДАННЫЕ")
     print("=" * 80)
-    input("Нажмите Enter, чтобы показать графики сырых данных...")
 
-    # Создаем папку для сырых графиков
-    raw_plots_folder = os.path.join(plots_folder, 'raw_plots')
-    if not os.path.exists(raw_plots_folder):
-        os.makedirs(raw_plots_folder)
+    # Создаем папку для исходных данных
+    raw_data_folder = os.path.join(main_plots_folder, '01_raw_data')
+    if not os.path.exists(raw_data_folder):
+        os.makedirs(raw_data_folder)
 
-    # Функция plot_raw_data должна быть добавлена в visualization.py
-    # Она строит графики без границ
-    from visualization import plot_raw_data
-    plot_raw_data(df, input_columns, output_columns, save_folder=raw_plots_folder)
+    print("\n1.1. Графики сырых данных (без границ)")
+    input("Нажмите Enter, чтобы показать графики...")
+    plot_raw_data(df, input_columns, output_columns, save_folder=raw_data_folder)
 
-    # ============= 3. ТЕПЛОВАЯ КАРТА =============
-    print("\n" + "=" * 80)
-    print("3. ТЕПЛОВАЯ КАРТА")
-    print("=" * 80)
+    print("\n1.2. Тепловая карта корреляций")
     input("Нажмите Enter, чтобы построить тепловую карту...")
-
-    correlation_folder = os.path.join(plots_folder, 'correlation_analysis')
-    if not os.path.exists(correlation_folder):
-        os.makedirs(correlation_folder)
-
-    # Общая тепловая карта
     plot_correlation_heatmap(df, input_columns, output_columns,
-                             save_folder=correlation_folder,
-                             title="Тепловая карта")
+                             save_folder=raw_data_folder,
+                             title="Тепловая карта корреляций (исходные данные)")
 
-    # ============= 4. ПОИСК ЛУЧШЕГО ОКНА =============
+    print(f"\n✅ Все графики исходных данных сохранены в: {raw_data_folder}")
+
+    # ============= 2. ВЫБОР РЕЖИМА РАБОТЫ =============
     print("\n" + "=" * 80)
-    print("4. ПОИСК ЛУЧШЕГО ОКНА ДАННЫХ")
+    print("2. ВЫБОР РЕЖИМА РАБОТЫ")
     print("=" * 80)
-    print("Этот анализ поможет найти участок данных, где корреляции между")
-    print("входными и выходными параметрами наиболее сильные.")
-    print("Будет найдено окно размером от 2000 строк с максимальной средней корреляцией.")
+    print("Выберите режим:")
+    print("1. Полная обработка данных (настройка границ, фильтрация выбросов)")
+    print("2. Быстрый режим (пропустить обработку, сразу к поиску окна и модели)")
 
-    search_window = input("\nВыполнить поиск лучшего окна данных? (да/нет): ").strip().lower()
+    mode_choice = input("\nВаш выбор (1/2): ").strip()
 
-    if search_window in ['да', 'yes', 'y', 'д']:
+    # Инициализация переменных
+    bounds_config = None
+    df_processed = df.copy()
+    processed_data_folder = None
+
+    if mode_choice == '1':
+        # ============= ПОЛНЫЙ РЕЖИМ: ОБРАБОТКА ДАННЫХ =============
         print("\n" + "=" * 80)
-        print("ПОИСК ЛУЧШЕГО ОКНА ДАННЫХ")
+        print("ПОЛНЫЙ РЕЖИМ: ОБРАБОТКА ДАННЫХ")
         print("=" * 80)
 
-        best_window, best_window_data = find_best_window(df, input_columns, output_columns, min_window_size=2000)
+        # Создаем папку для обработанных данных
+        processed_data_folder = os.path.join(main_plots_folder, '02_processed_data')
+        if not os.path.exists(processed_data_folder):
+            os.makedirs(processed_data_folder)
 
-        if best_window is not None:
-            # Тепловая карта для лучшего окна
-            plot_best_window_heatmap(df, best_window, input_columns, output_columns, save_folder=correlation_folder)
+        print("\n2.1. Графики с границами ±50%")
+        input("Нажмите Enter, чтобы показать графики...")
 
-            # Графики сырых данных для лучшего окна
-            plot_window_raw_data(df, best_window, input_columns, output_columns, save_folder=correlation_folder)
-
-            # Сохраняем лучшее окно в CSV
-            start = best_window['start_row']
-            end = best_window['end_row']
-            window_file = os.path.join(plots_folder, f'best_window_rows_{start}_{end}.csv')
-            best_window_data.to_csv(window_file, index=False, encoding='utf-8-sig')
-            print(f"\nДанные лучшего окна сохранены в: {window_file}")
-
-            # Информация о лучшем окне
-            info_file = os.path.join(correlation_folder, 'best_window_info.txt')
-            with open(info_file, 'w', encoding='utf-8') as f:
-                f.write("ИНФОРМАЦИЯ О ЛУЧШЕМ ОКНЕ\n")
-                f.write("=" * 50 + "\n\n")
-                f.write(f"Строки: {start} - {end}\n")
-                f.write(f"Размер окна: {best_window['window_size']}\n")
-                f.write(f"Средняя корреляция: {best_window['mean_correlation']:.4f}\n")
-                f.write(f"Улучшение относительно всех данных: +{best_window['improvement']:.4f}\n")
-            print(f"Информация сохранена в: {info_file}")
-        else:
-            print("\nНе удалось найти подходящее окно. Возможно, недостаточно данных.")
-    else:
-        print("\nПоиск лучшего окна пропущен.")
-
-        # Создаем временную конфигурацию с границами 50%
+        # Показываем графики с границами 50%
         temp_config = {}
         for col in all_data_columns:
             try:
@@ -164,104 +112,339 @@ def main():
             except:
                 pass
 
-        # Создаем папку для начальных графиков с границами
-        initial_plots_folder = os.path.join(plots_folder, 'initial_plots')
-        if not os.path.exists(initial_plots_folder):
-            os.makedirs(initial_plots_folder)
+        plot_all_columns(df, temp_config, input_columns, output_columns,
+                         save_folder=processed_data_folder)
 
-    # ============= 5. ЧИСТКА ДАННЫХ =============
-    print("\n" + "=" * 80)
-    print("5. ВЫБОР МЕТОДОВ ДЛЯ ЧИСТКИ ДАННЫХ")
-    print("=" * 80)
-    print("Вы можете вручную выбрать границы, по которым можно очистить данные,")
-    print("или воспользоваться одним из фильтров.")
+        # Интерактивная настройка границ и фильтрация
+        bounds_config = interactive_bounds_adjustment(df, all_data_columns, input_columns, output_columns,
+                                                      processed_data_folder)
 
-    input("\nНажмите Enter, чтобы начать чистку...")
+        # Показываем графики с новыми границами
+        print("\n2.2. Графики с настроенными границами")
+        input("Нажмите Enter, чтобы показать графики...")
 
-    # Запускаем интерактивную настройку
-    bounds_config = interactive_bounds_adjustment(df, all_data_columns, input_columns, output_columns, plots_folder)
+        plot_all_columns(df, bounds_config, input_columns, output_columns,
+                         save_folder=processed_data_folder)
 
-    # ============= 6. ОЧИЩЕННЫЕ ДАННЫЕ =============
-    print("\n" + "=" * 80)
-    print("6. ВЫДЕЛЕНИЕ ИСКЛЮЧАЕМЫХ ДАННЫХ")
-    print("=" * 80)
-    input("Нажмите Enter, чтобы показать графики после применения фильтров...")
+        # Тепловая карта после настройки границ
+        print("\n2.3. Тепловая карта после настройки границ")
+        input("Нажмите Enter, чтобы построить тепловую карту...")
 
-    final_folder = os.path.join(plots_folder, 'final_plots_before_removal')
-    if not os.path.exists(final_folder):
-        os.makedirs(final_folder)
+        plot_correlation_heatmap(df, input_columns, output_columns,
+                                 save_folder=processed_data_folder,
+                                 title="Тепловая карта корреляций (после настройки границ)")
 
-    plot_all_columns(df, bounds_config, input_columns, output_columns, final_folder)
+        # Удаление выбросов
+        print("\n2.4. Удаление выбросов")
+        remove_choice = input(
+            "Хотите удалить строки с выбросами (точки за пределами границ)? (да/нет): ").strip().lower()
 
-    # ============= 7. УДАЛЕНИЕ ВЫБРОСОВ =============
-    print("\n" + "=" * 80)
-    print("7. УДАЛЕНИЕ ВЫБРОСОВ")
-    print("=" * 80)
-    remove_choice = input("Хотите удалить отфильтрованные данные? (да/нет): ").strip().lower()
+        if remove_choice in ['да', 'yes', 'y', 'д']:
+            df_cleaned, removed_indices, removal_report = remove_outliers(df, bounds_config, all_data_columns)
 
-    if remove_choice in ['да', 'yes', 'y', 'д']:
-        # Удаляем выбросы
-        df_cleaned, removed_indices, removal_report = remove_outliers(df, bounds_config, all_data_columns)
+            if len(removed_indices) > 0:
+                df_processed = df_cleaned
 
-        if len(removed_indices) > 0:
-            # ============= 8. ОЧИЩЕННЫЕ ДАННЫЕ =============
-            print("\n" + "=" * 80)
-            print("8. ОЧИЩЕННЫЕ ДАННЫЕ")
-            print("=" * 80)
-            input("Нажмите Enter, чтобы показать графики очищенных данных...")
+                print("\n2.5. Графики очищенных данных")
+                input("Нажмите Enter, чтобы показать графики...")
 
-            after_removal_folder = os.path.join(plots_folder, 'final_plots_after_removal')
-            if not os.path.exists(after_removal_folder):
-                os.makedirs(after_removal_folder)
+                plot_all_columns(df_cleaned, bounds_config, input_columns, output_columns,
+                                 save_folder=processed_data_folder)
 
-            plot_all_columns(df_cleaned, bounds_config, input_columns, output_columns, after_removal_folder)
+                print(f"\nУдалено строк: {len(removed_indices)}")
+                print(f"Осталось строк: {len(df_cleaned)}")
+            else:
+                print("\nВыбросов не обнаружено. Очистка не требуется.")
 
-            # Сохраняем очищенные данные
-            save_choice = input("\nСохранить очищенные данные в файл? (да/нет): ").strip().lower()
-            if save_choice in ['да', 'yes', 'y', 'д']:
-                cleaned_path, info_path = save_cleaned_data(df_cleaned, 'ПП_part.csv', plots_folder)
-
-                # Сохраняем информацию об удалении
-                with open(info_path, 'w', encoding='utf-8') as f:
-                    f.write("ИНФОРМАЦИЯ ОБ УДАЛЕНИИ ВЫБРОСОВ\n")
-                    f.write("=" * 50 + "\n\n")
-                    f.write(f"Исходное количество строк: {len(df)}\n")
-                    f.write(f"Удалено строк: {len(removed_indices)}\n")
-                    f.write(str(removed_indices) + "\n\n")
-                    f.write("Детали по столбцам:\n")
-                    for col, report in removal_report.items():
-                        f.write(f"\n{col}:\n")
-                        f.write(f"  Количество выбросов: {report['outlier_count']}\n")
-                        f.write(f"  Процент выбросов: {report['outlier_percent']:.2f}%\n")
-
-                print(f"Информация об удалении сохранена в: {info_path}")
-
-            # Выводим итоговую статистику
-            print_final_statistics(df, df_cleaned, bounds_config, all_data_columns, removed_indices)
-
-            # Сохраняем конфигурацию границ
+        # Сохраняем конфигурацию границ
+        if bounds_config:
             save_config = input("\nСохранить конфигурацию границ в файл? (да/нет): ").strip().lower()
             if save_config in ['да', 'yes', 'y', 'д']:
-                config_file = save_bounds_config(bounds_config, plots_folder)
+                config_file = save_bounds_config(bounds_config, processed_data_folder)
                 print(f"Конфигурация сохранена в файл: {config_file}")
 
-        else:
-            print("\nВыбросов не обнаружено. Очистка не требуется.")
-            save_config = input("\nСохранить конфигурацию границ в файл? (да/нет): ").strip().lower()
-            if save_config in ['да', 'yes', 'y', 'д']:
-                config_file = save_bounds_config(bounds_config, plots_folder)
-                print(f"Конфигурация сохранена в файл: {config_file}")
+        print(f"\n✅ Все графики обработанных данных сохранены в: {processed_data_folder}")
+
+    elif mode_choice == '2':
+        # ============= БЫСТРЫЙ РЕЖИМ: ПРОПУСК ОБРАБОТКИ =============
+        print("\n" + "=" * 80)
+        print("БЫСТРЫЙ РЕЖИМ: ПРОПУСК ОБРАБОТКИ ДАННЫХ")
+        print("=" * 80)
+        print("Вы пропустили этапы настройки границ и фильтрации выбросов.")
+        print("Данные будут использованы в исходном виде.")
+
+        df_processed = df.copy()
+
+        # Создаем базовую конфигурацию границ для отображения (если понадобится)
+        bounds_config = {}
+        for col in all_data_columns:
+            try:
+                data = pd.to_numeric(df[col], errors='coerce')
+                if not data.isna().all():
+                    mean_val = data.mean()
+                    bounds_config[col] = {
+                        'mean': mean_val,
+                        'lower': mean_val * 0.5,
+                        'upper': mean_val * 1.5,
+                        'data_type': 'Входные' if col in input_columns else 'Выходные'
+                    }
+            except:
+                pass
+
+        print("\n✅ Переход к поиску лучшего окна и построению модели...")
+
     else:
-        save_config = input("\nСохранить конфигурацию границ в файл? (да/нет): ").strip().lower()
-        if save_config in ['да', 'yes', 'y', 'д']:
-            config_file = save_bounds_config(bounds_config, plots_folder)
-            print(f"Конфигурация сохранена в файл: {config_file}")
+        print("Неверный выбор. Используется полный режим по умолчанию.")
+        mode_choice = '1'
+        df_processed = df.copy()
+        bounds_config = {}
+        for col in all_data_columns:
+            try:
+                data = pd.to_numeric(df[col], errors='coerce')
+                if not data.isna().all():
+                    mean_val = data.mean()
+                    bounds_config[col] = {
+                        'mean': mean_val,
+                        'lower': mean_val * 0.5,
+                        'upper': mean_val * 1.5,
+                        'data_type': 'Входные' if col in input_columns else 'Выходные'
+                    }
+            except:
+                pass
+
+    # ============= 3. ПОИСК ЛУЧШЕГО ОКНА =============
+    print("\n" + "=" * 80)
+    print("3. ПОИСК ЛУЧШЕГО ОКНА ДАННЫХ")
+    print("=" * 80)
+    print("Этот анализ поможет найти участок данных, где корреляции между")
+    print("входными и выходными параметрами наиболее сильные.")
+    print("Будет найдено окно размером от 2000 строк с максимальной средней корреляцией.")
+
+    search_window = input("\nВыполнить поиск лучшего окна данных? (да/нет): ").strip().lower()
+
+    best_window = None
+    best_window_data = None
+    best_window_folder = None
+
+    if search_window in ['да', 'yes', 'y', 'д']:
+        # Создаем папку для лучшего окна
+        best_window_folder = os.path.join(main_plots_folder, '03_best_window')
+        if not os.path.exists(best_window_folder):
+            os.makedirs(best_window_folder)
+
+        print("\n" + "=" * 80)
+        print("ПОИСК ЛУЧШЕГО ОКНА ДАННЫХ")
+        print("=" * 80)
+
+        best_window, best_window_data = find_best_window(df_processed, input_columns, output_columns,
+                                                         min_window_size=2000)
+
+        if best_window is not None:
+            start = best_window['start_row']
+            end = best_window['end_row']
+
+            print(f"\n✅ Найдено лучшее окно:")
+            print(f"  Строки: {start} - {end}")
+            print(f"  Размер окна: {best_window['window_size']} строк")
+            print(f"  Средняя корреляция: {best_window['mean_correlation']:.4f}")
+            print(f"  Улучшение относительно всех данных: +{best_window['improvement']:.4f}")
+
+            # Сохраняем данные и графики окна
+            save_best_window_data(df_processed, best_window, input_columns, output_columns, best_window_folder)
+
+            # Визуализация
+            plot_best_window_heatmap(df_processed, best_window, input_columns, output_columns,
+                                     save_folder=best_window_folder)
+            plot_window_raw_data(df_processed, best_window, input_columns, output_columns,
+                                 save_folder=best_window_folder)
+
+            print(f"\n✅ Все данные и графики лучшего окна сохранены в: {best_window_folder}")
+        else:
+            print("\n❌ Не удалось найти подходящее окно. Возможно, недостаточно данных.")
+    else:
+        print("\nПоиск лучшего окна пропущен.")
+
+    # ============= 4. ПОСТРОЕНИЕ МОДЕЛИ =============
+    print("\n" + "=" * 80)
+    print("4. ПОСТРОЕНИЕ МОДЕЛИ")
+    print("=" * 80)
+
+    # Выбор данных для моделирования
+    if best_window is not None:
+        use_window = input(
+            f"\nИспользовать лучшее окно (строки {best_window['start_row']}-{best_window['end_row']}) для моделирования? (да/нет): ").strip().lower()
+        if use_window in ['да', 'yes', 'y', 'д']:
+            data_for_model = best_window_data
+            print(f"\nМодель будет построена на данных лучшего окна ({len(data_for_model)} строк)")
+            model_data_source = "best_window"
+        else:
+            data_for_model = df_processed
+            print(f"\nМодель будет построена на всех данных ({len(data_for_model)} строк)")
+            model_data_source = "all_data"
+    else:
+        data_for_model = df_processed
+        print(f"\nМодель будет построена на всех данных ({len(data_for_model)} строк)")
+        model_data_source = "all_data"
+
+    print("\nВыберите тип модели:")
+    print("1. Random Forest")
+    print("2. XGBoost")
+    print("3. Сравнить обе модели")
+    print("4. Ансамбль (Random Forest + XGBoost)")
+
+    model_type_choice = input("\nВаш выбор (1/2/3/4): ").strip()
+
+    if model_type_choice in ['1', '2', '3', '4']:
+        try:
+            from modeling import (build_random_forest_model, build_xgboost_model,
+                                  build_ensemble_model, plot_model_comparison,
+                                  plot_feature_importance_comparison)
+
+            # Создаем папку для результатов моделирования
+            modeling_folder = os.path.join(main_plots_folder, '04_modeling_results')
+            if not os.path.exists(modeling_folder):
+                os.makedirs(modeling_folder)
+
+            rf_results = None
+            xgb_results = None
+
+            if model_type_choice == '1':
+                # Только Random Forest
+                print("\n" + "=" * 80)
+                print("ПОСТРОЕНИЕ МОДЕЛИ RANDOM FOREST")
+                print("=" * 80)
+                results, model, importance = build_random_forest_model(
+                    data_for_model, input_columns, output_columns,
+                    save_folder=modeling_folder,
+                    test_size=0.2,
+                    random_state=42
+                )
+                rf_results = results
+
+            elif model_type_choice == '2':
+                # Только XGBoost
+                print("\n" + "=" * 80)
+                print("ПОСТРОЕНИЕ МОДЕЛИ XGBOOST")
+                print("=" * 80)
+                results, model, importance = build_xgboost_model(
+                    data_for_model, input_columns, output_columns,
+                    save_folder=modeling_folder,
+                    test_size=0.2,
+                    random_state=42
+                )
+                xgb_results = results
+
+            elif model_type_choice == '3':
+                # Сравнить обе модели
+                print("\n" + "=" * 80)
+                print("ПОСТРОЕНИЕ И СРАВНЕНИЕ МОДЕЛЕЙ")
+                print("=" * 80)
+
+                # Random Forest
+                rf_results, rf_model, rf_importance = build_random_forest_model(
+                    data_for_model, input_columns, output_columns,
+                    save_folder=modeling_folder,
+                    test_size=0.2,
+                    random_state=42
+                )
+
+                # XGBoost
+                xgb_results, xgb_model, xgb_importance = build_xgboost_model(
+                    data_for_model, input_columns, output_columns,
+                    save_folder=modeling_folder,
+                    test_size=0.2,
+                    random_state=42
+                )
+
+                # Сравниваем метрики
+                print("\n" + "=" * 80)
+                print("СРАВНЕНИЕ МОДЕЛЕЙ")
+                print("=" * 80)
+
+                if rf_results and xgb_results:
+                    print(f"\nRandom Forest - R²: {rf_results['r2_test']:.4f}")
+                    print(f"XGBoost - R²: {xgb_results['r2_test']:.4f}")
+
+                    if rf_results['r2_test'] > xgb_results['r2_test']:
+                        print(f"\n🎉 Лучшая модель: Random Forest (R² = {rf_results['r2_test']:.4f})")
+                    else:
+                        print(f"\n🎉 Лучшая модель: XGBoost (R² = {xgb_results['r2_test']:.4f})")
+
+                    # Графики сравнения
+                    plot_model_comparison(rf_results, xgb_results, save_folder=modeling_folder)
+                    plot_feature_importance_comparison(rf_importance, xgb_importance,
+                                                       save_folder=modeling_folder, top_n=10)
+
+            elif model_type_choice == '4':
+                # Ансамбль
+                print("\n" + "=" * 80)
+                print("ПОСТРОЕНИЕ АНСАМБЛЯ МОДЕЛЕЙ")
+                print("=" * 80)
+
+                ensemble_results = build_ensemble_model(
+                    data_for_model, input_columns, output_columns,
+                    save_folder=modeling_folder,
+                    test_size=0.2,
+                    random_state=42
+                )
+
+                if ensemble_results:
+                    print(f"\nАнсамбль (Random Forest + XGBoost):")
+                    print(f"  R² = {ensemble_results['r2_ensemble']:.4f}")
+                    print(f"  RMSE = {ensemble_results['rmse_ensemble']:.4f}")
+                    print(f"  MAE = {ensemble_results['mae_ensemble']:.4f}")
+
+            # Вывод итоговой оценки
+            if rf_results:
+                print("\n" + "=" * 80)
+                print("ИТОГОВАЯ ОЦЕНКА (Random Forest)")
+                print("=" * 80)
+                print(f"R² на тестовой выборке: {rf_results['r2_test']:.4f}")
+                if rf_results['r2_test'] < 0.3:
+                    print("⚠️ Слабая предсказательная способность")
+                elif rf_results['r2_test'] < 0.6:
+                    print("✅ Умеренная предсказательная способность")
+                else:
+                    print("🎉 Высокая предсказательная способность")
+
+            if xgb_results:
+                print("\n" + "=" * 80)
+                print("ИТОГОВАЯ ОЦЕНКА (XGBoost)")
+                print("=" * 80)
+                print(f"R² на тестовой выборке: {xgb_results['r2_test']:.4f}")
+                if xgb_results['r2_test'] < 0.3:
+                    print("⚠️ Слабая предсказательная способность")
+                elif xgb_results['r2_test'] < 0.6:
+                    print("✅ Умеренная предсказательная способность")
+                else:
+                    print("🎉 Высокая предсказательная способность")
+
+            print(f"\n✅ Результаты моделирования сохранены в: {modeling_folder}")
+
+        except ImportError as e:
+            print(f"Ошибка импорта: {e}")
+            if model_type_choice in ['2', '3', '4']:
+                print("Для XGBoost выполните: pip install xgboost")
+        except Exception as e:
+            print(f"Ошибка при построении модели: {e}")
+    else:
+        print("\nПостроение модели пропущено.")
+
+    # ============= ИТОГОВАЯ ИНФОРМАЦИЯ =============
+    print("\n" + "=" * 60)
+    print("ИТОГОВАЯ СТРУКТУРА СОХРАНЕННЫХ ДАННЫХ")
+    print("=" * 60)
+    print(f"\nОсновная папка: {main_plots_folder}")
+    print(f"  ├── 01_raw_data/              # Исходные данные (графики, тепловая карта)")
+    if processed_data_folder:
+        print(f"  ├── 02_processed_data/        # Обработанные данные (графики с границами)")
+    if best_window_folder:
+        print(f"  ├── 03_best_window/           # Лучшее окно (данные CSV, графики)")
+    print(f"  └── 04_modeling_results/       # Результаты моделирования")
 
     print("\n" + "=" * 60)
-    print(f"ВСЕ ГРАФИКИ СОХРАНЕНЫ В ПАПКУ: {plots_folder}")
     print("ГОТОВО!")
     print("=" * 60)
-
 
 if __name__ == "__main__":
     main()

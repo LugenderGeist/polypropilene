@@ -167,7 +167,6 @@ def plot_best_window_heatmap(df, best_window, input_columns, output_columns, sav
 
 
 def plot_window_raw_data(df, best_window, input_columns, output_columns, save_folder=None):
-    """Строит графики сырых данных для лучшего окна"""
     if best_window is None:
         return
 
@@ -229,3 +228,57 @@ def plot_window_raw_data(df, best_window, input_columns, output_columns, save_fo
         print(f"График сырых данных лучшего окна сохранен: {save_path}")
 
     plt.show()
+
+
+def save_best_window_data(df, best_window, input_columns, output_columns, save_folder):
+    if best_window is None:
+        return None
+
+    start = best_window['start_row']
+    end = best_window['end_row']
+    window_data = df.iloc[start:end]
+
+    # Сохраняем CSV
+    csv_file = os.path.join(save_folder, f'best_window_rows_{start}_{end}.csv')
+    window_data.to_csv(csv_file, index=False, encoding='utf-8-sig')
+    print(f"📁 CSV сохранен: {csv_file}")
+
+    # Сохраняем мета-информацию
+    info_file = os.path.join(save_folder, f'best_window_info_{start}_{end}.txt')
+    with open(info_file, 'w', encoding='utf-8') as f:
+        f.write("ИНФОРМАЦИЯ О ЛУЧШЕМ ОКНЕ\n")
+        f.write("=" * 60 + "\n\n")
+        f.write(f"Дата: {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+
+        f.write("ПАРАМЕТРЫ ОКНА:\n")
+        f.write("-" * 40 + "\n")
+        f.write(f"Строки: {start} - {end}\n")
+        f.write(f"Размер окна: {best_window['window_size']}\n")
+        f.write(f"Шаг сдвига: {best_window['step']}\n")
+        f.write(f"Средняя корреляция: {best_window['mean_correlation']:.6f}\n")
+        f.write(f"Улучшение: +{best_window['improvement']:.6f}\n\n")
+
+        f.write("КОРРЕЛЯЦИИ В ОКНЕ:\n")
+        f.write("-" * 40 + "\n")
+        target = output_columns[0] if output_columns else None
+        if target:
+            for col in input_columns:
+                corr = window_data[col].corr(window_data[target])
+                f.write(f"{col} → {target}: {corr:.6f}\n")
+
+        f.write("\nСТАТИСТИКА:\n")
+        f.write("-" * 40 + "\n")
+        f.write(f"Строк: {len(window_data)}\n")
+        f.write(f"Столбцов: {len(window_data.columns)}\n\n")
+
+        f.write("ВХОДНЫЕ ПРИЗНАКИ:\n")
+        for col in input_columns:
+            f.write(f"  {col}: μ={window_data[col].mean():.6f}, σ={window_data[col].std():.6f}\n")
+
+        f.write("\nВЫХОДНЫЕ ПРИЗНАКИ:\n")
+        for col in output_columns:
+            f.write(f"  {col}: μ={window_data[col].mean():.6f}, σ={window_data[col].std():.6f}\n")
+
+    print(f"📄 Информация сохранена: {info_file}")
+
+    return csv_file

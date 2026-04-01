@@ -4,14 +4,12 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 
-
 # Функция для определения кодировки файла
 def detect_encoding(file_path):
     with open(file_path, 'rb') as f:
         raw_data = f.read(10000)
         result = chardet.detect(raw_data)
         return result['encoding']
-
 
 # Функция для преобразования всех столбцов в числовой формат
 def convert_to_numeric(df):
@@ -21,7 +19,6 @@ def convert_to_numeric(df):
         # Пробуем преобразовать в числовой формат
         df_numeric[col] = pd.to_numeric(df_numeric[col], errors='coerce')
     return df_numeric
-
 
 # Функция для загрузки данных с определением кодировки
 def load_data(file_path):
@@ -59,7 +56,6 @@ def load_data(file_path):
         print("Не удалось загрузить файл")
         return None, None
 
-
 # Функция для создания папки для графиков
 def create_plots_folder():
     """Создает папку для сохранения графиков"""
@@ -83,7 +79,6 @@ def save_bounds_config(bounds_config, save_folder):
             f.write(f"  Нижняя граница: {config['lower']:.6f}\n")
             f.write(f"  Верхняя граница: {config['upper']:.6f}\n\n")
     return config_file
-
 
 # Функция для настройки входных и выходных столбцов
 def setup_columns(df):
