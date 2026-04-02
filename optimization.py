@@ -178,30 +178,18 @@ class GeneticOptimizer:
 
             population = new_population[:self.pop_size]
 
-        # Сортируем финальную популяцию
-        final_fitness = self.evaluate_population(population)
-        sorted_idx = np.argsort(final_fitness)[::-1]
-
-        results = []
-        for idx in sorted_idx[:10]:
-            results.append({
-                'fitness': final_fitness[idx],
-                'parameters': population[idx]
-            })
-
         if verbose:
             print(f"\n" + "=" * 80)
-            print("ЛУЧШИЕ РЕЗУЛЬТАТЫ ОПТИМИЗАЦИИ")
+            print("ЛУЧШИЙ РЕЗУЛЬТАТ ОПТИМИЗАЦИИ")
             print("=" * 80)
-            print(f"\nЛучшее найденное значение: {best_fitness:.4f}")
-            print("\nОптимальные параметры:")
+            print(f"\n🎯 Лучшее найденное значение: {best_fitness:.4f}")
+            print("\n📊 Оптимальные параметры:")
             for col, value in best_individual.items():
-                print(f"  {col}: {value:.4f}")
+                print(f"   {col}: {value:.4f}")
 
         return {
             'best_individual': best_individual,
             'best_fitness': best_fitness,
-            'results': results,
             'history': {
                 'best': best_fitness_history,
                 'mean': mean_fitness_history
@@ -213,14 +201,6 @@ def run_optimization(df_original, model, input_columns, output_columns,
                      n_top_features=None, save_folder=None):
     """
     Запуск оптимизации для максимизации выходного параметра
-
-    Parameters:
-    - df_original: исходный DataFrame (для границ)
-    - model: обученная модель
-    - input_columns: все входные столбцы
-    - output_columns: выходные столбцы
-    - n_top_features: количество важных признаков (берется из config, если не указан)
-    - save_folder: папка для сохранения результатов
     """
     from config import OPTIMIZATION_TOP_FEATURES
 
@@ -259,10 +239,10 @@ def run_optimization(df_original, model, input_columns, output_columns,
         'importance': feature_importance
     }).sort_values('importance', ascending=False)
 
-    print(f"\nТоп-{n_top_features} наиболее важных признаков для оптимизации:")
+    print(f"\n📊 Топ-{n_top_features} наиболее важных признаков для оптимизации:")
     top_features = importance_df.head(n_top_features)['feature'].tolist()
     for i, (idx, row) in enumerate(importance_df.head(n_top_features).iterrows()):
-        print(f"  {i + 1}. {row['feature']}: {row['importance']:.4f}")
+        print(f"   {i + 1}. {row['feature']}: {row['importance']:.4f}")
 
     use_all = input("\nИспользовать все признаки для оптимизации? (да/нет): ").strip().lower()
     if use_all in ['да', 'yes', 'y', 'д']:
@@ -277,14 +257,13 @@ def run_optimization(df_original, model, input_columns, output_columns,
         model=model,
         input_columns=optimize_features,
         scaler=None
-        # Параметры pop_size, generations и т.д. берутся из config автоматически
     )
 
     bounds = optimizer.set_bounds_from_data(df_original, optimize_features)
 
     print("\n📊 Границы поиска:")
     for col in optimize_features:
-        print(f"  {col}: [{bounds[col]['min']:.4f}, {bounds[col]['max']:.4f}]")
+        print(f"   {col}: [{bounds[col]['min']:.4f}, {bounds[col]['max']:.4f}]")
 
     # ============= ФИКСАЦИЯ ОСТАЛЬНЫХ ПРИЗНАКОВ =============
     fixed_params = {}
@@ -293,9 +272,9 @@ def run_optimization(df_original, model, input_columns, output_columns,
             fixed_params[col] = df_original[col].mean()
 
     if fixed_params:
-        print(f"\nФиксированные параметры (средние значения):")
+        print(f"\n📌 Фиксированные параметры (средние значения):")
         for col, val in fixed_params.items():
-            print(f"  {col}: {val:.4f}")
+            print(f"   {col}: {val:.4f}")
 
     # Модифицируем метод evaluate_fitness
     def evaluate_with_fixed(individual):
@@ -326,9 +305,9 @@ def run_optimization(df_original, model, input_columns, output_columns,
         plot_optimization_results(result, optimizer.bounds, optimize_features,
                                   target, save_folder)
         save_optimization_results(result, optimize_features, target, save_folder)
-        save_optimization_details(result, optimizer.bounds, optimize_features, target, save_folder)
 
     return result
+
 
 def plot_optimization_results(result, bounds, optimize_features, target, save_folder=None):
     """Визуализация результатов оптимизации - каждый график в отдельном файле"""
@@ -352,38 +331,13 @@ def plot_optimization_results(result, bounds, optimize_features, target, save_fo
     plt.show()
     plt.close(fig1)
 
-    # 2. Топ-10 лучших решений
-    fig2, ax2 = plt.subplots(figsize=(10, 6))
-    top_fitness = [r['fitness'] for r in result['results'][:10]]
-    bars = ax2.barh(range(len(top_fitness)), top_fitness, color='green', alpha=0.7, edgecolor='black')
-
-    # Добавляем значения на бары
-    for i, (bar, value) in enumerate(zip(bars, top_fitness)):
-        ax2.text(value + 0.01, bar.get_y() + bar.get_height() / 2,
-                 f'{value:.4f}', va='center', fontsize=9)
-
-    ax2.set_xlabel(f'Значение {target}', fontsize=12)
-    ax2.set_ylabel('Ранг решения', fontsize=12)
-    ax2.set_title('Топ-10 лучших решений', fontsize=14, fontweight='bold')
-    ax2.set_yticks(range(len(top_fitness)))
-    ax2.set_yticklabels([f'Решение {i + 1}' for i in range(len(top_fitness))])
-    ax2.grid(True, alpha=0.3, axis='x')
-    plt.tight_layout()
-
-    if save_folder:
-        save_path2 = os.path.join(save_folder, '02_top_10_solutions.png')
-        plt.savefig(save_path2, dpi=300, bbox_inches='tight')
-        print(f"📁 График топ-10 решений сохранен: {save_path2}")
-    plt.show()
-    plt.close(fig2)
-
-    # 3. Оптимальные значения параметров
-    fig3, ax3 = plt.subplots(figsize=(12, max(6, len(optimize_features) * 0.4)))
+    # 2. Оптимальные значения параметров
+    fig2, ax2 = plt.subplots(figsize=(12, max(6, len(optimize_features) * 0.4)))
     best_individual = result['best_individual']
     param_names = list(best_individual.keys())
     param_values = list(best_individual.values())
 
-    # Нормализуем значения для цветовой шкалы (относительно границ)
+    # Нормализуем значения для цветовой шкалы
     colors = []
     for col in param_names:
         min_val = bounds[col]['min']
@@ -391,41 +345,37 @@ def plot_optimization_results(result, bounds, optimize_features, target, save_fo
         normalized = (best_individual[col] - min_val) / (max_val - min_val)
         colors.append(plt.cm.RdYlGn(normalized))
 
-    bars = ax3.barh(range(len(param_values)), param_values, color=colors, alpha=0.8, edgecolor='black', linewidth=0.5)
+    bars = ax2.barh(range(len(param_values)), param_values, color=colors, alpha=0.8, edgecolor='black', linewidth=0.5)
 
     # Добавляем значения на бары
     for i, (bar, value, col) in enumerate(zip(bars, param_values, param_names)):
-        ax3.text(value + (bounds[col]['max'] - bounds[col]['min']) * 0.02,
+        ax2.text(value + (bounds[col]['max'] - bounds[col]['min']) * 0.02,
                  bar.get_y() + bar.get_height() / 2,
                  f'{value:.4f}', va='center', fontsize=9)
 
-    ax3.set_yticks(range(len(param_values)))
-    ax3.set_yticklabels(param_names, fontsize=10)
-    ax3.set_xlabel('Значение параметра', fontsize=12)
-    ax3.set_title('Оптимальные значения параметров', fontsize=14, fontweight='bold')
-    ax3.invert_yaxis()
-    ax3.grid(True, alpha=0.3, axis='x')
+    ax2.set_yticks(range(len(param_values)))
+    ax2.set_yticklabels(param_names, fontsize=10)
+    ax2.set_xlabel('Значение параметра', fontsize=12)
+    ax2.set_title('Оптимальные значения параметров', fontsize=14, fontweight='bold')
+    ax2.invert_yaxis()
+    ax2.grid(True, alpha=0.3, axis='x')
     plt.tight_layout()
 
     if save_folder:
-        save_path3 = os.path.join(save_folder, '03_optimal_parameters.png')
-        plt.savefig(save_path3, dpi=300, bbox_inches='tight')
-        print(f"📁 График оптимальных параметров сохранен: {save_path3}")
+        save_path2 = os.path.join(save_folder, '02_optimal_parameters.png')
+        plt.savefig(save_path2, dpi=300, bbox_inches='tight')
+        print(f"📁 График оптимальных параметров сохранен: {save_path2}")
     plt.show()
-    plt.close(fig3)
+    plt.close(fig2)
 
-    # 4. Сравнение с исходными данными (гистограмма распределения)
-    fig4, ax4 = plt.subplots(figsize=(10, 6))
+    # 3. Распределение оптимальных значений
+    fig3, ax3 = plt.subplots(figsize=(10, 6))
 
-    # Собираем статистику по каждому оптимизируемому параметру
     param_comparison = []
     for col in optimize_features:
         opt_value = best_individual[col]
         min_val = bounds[col]['min']
         max_val = bounds[col]['max']
-        mean_val = bounds[col]['mean']
-
-        # Относительное положение оптимума в диапазоне
         relative_pos = (opt_value - min_val) / (max_val - min_val) * 100
 
         param_comparison.append({
@@ -433,11 +383,10 @@ def plot_optimization_results(result, bounds, optimize_features, target, save_fo
             'optimal': opt_value,
             'min': min_val,
             'max': max_val,
-            'mean': mean_val,
+            'mean': bounds[col]['mean'],
             'relative_pos': relative_pos
         })
 
-    # Сортируем по относительной позиции
     param_comparison.sort(key=lambda x: x['relative_pos'])
 
     x_pos = range(len(param_comparison))
@@ -446,132 +395,51 @@ def plot_optimization_results(result, bounds, optimize_features, target, save_fo
                          for p in param_comparison]
 
     colors = ['red' if pos < 30 else 'green' if pos > 70 else 'orange' for pos in relative_positions]
-    bars = ax4.barh(x_pos, relative_positions, color=colors, alpha=0.7, edgecolor='black')
+    bars = ax3.barh(x_pos, relative_positions, color=colors, alpha=0.7, edgecolor='black')
 
-    # Добавляем значения
-    for i, (bar, pos, param) in enumerate(zip(bars, relative_positions, param_comparison)):
-        ax4.text(pos + 1, bar.get_y() + bar.get_height() / 2,
+    for i, (bar, pos) in enumerate(zip(bars, relative_positions)):
+        ax3.text(pos + 1, bar.get_y() + bar.get_height() / 2,
                  f'{pos:.1f}%', va='center', fontsize=9)
 
-    ax4.set_yticks(x_pos)
-    ax4.set_yticklabels(param_names_short, fontsize=9)
-    ax4.set_xlabel('Позиция оптимума в диапазоне (%)', fontsize=12)
-    ax4.set_title('Распределение оптимальных значений в границах', fontsize=14, fontweight='bold')
-    ax4.axvline(x=50, color='blue', linestyle='--', alpha=0.5, label='Середина диапазона')
-    ax4.legend()
-    ax4.grid(True, alpha=0.3, axis='x')
+    ax3.set_yticks(x_pos)
+    ax3.set_yticklabels(param_names_short, fontsize=9)
+    ax3.set_xlabel('Позиция оптимума в диапазоне (%)', fontsize=12)
+    ax3.set_title('Распределение оптимальных значений в границах', fontsize=14, fontweight='bold')
+    ax3.axvline(x=50, color='blue', linestyle='--', alpha=0.5, label='Середина диапазона')
+    ax3.legend()
+    ax3.grid(True, alpha=0.3, axis='x')
     plt.tight_layout()
 
     if save_folder:
-        save_path4 = os.path.join(save_folder, '04_optimal_distribution.png')
-        plt.savefig(save_path4, dpi=300, bbox_inches='tight')
-        print(f"📁 График распределения оптимальных значений сохранен: {save_path4}")
+        save_path3 = os.path.join(save_folder, '03_optimal_distribution.png')
+        plt.savefig(save_path3, dpi=300, bbox_inches='tight')
+        print(f"📁 График распределения оптимальных значений сохранен: {save_path3}")
     plt.show()
-    plt.close(fig4)
+    plt.close(fig3)
 
-    # 5. Тепловая карта корреляций оптимальных параметров (если их достаточно)
-    if len(optimize_features) >= 3:
-        fig5, ax5 = plt.subplots(figsize=(10, 8))
+    # 4. Динамика улучшения
+    fig4, ax4 = plt.subplots(figsize=(10, 6))
 
-        # Собираем топ-10 решений для анализа
-        solutions_data = []
-        for r in result['results'][:10]:
-            solution = [r['parameters'][col] for col in optimize_features]
-            solutions_data.append(solution)
-
-        # Нормализуем и вычисляем корреляции
-        solutions_array = np.array(solutions_data)
-        corr_matrix = np.corrcoef(solutions_array.T)
-
-        # Рисуем тепловую карту
-        im = ax5.imshow(corr_matrix, cmap='RdYlGn', vmin=-1, vmax=1, aspect='auto')
-
-        # Добавляем значения в ячейки
-        for i in range(len(optimize_features)):
-            for j in range(len(optimize_features)):
-                text = ax5.text(j, i, f'{corr_matrix[i, j]:.2f}',
-                                ha="center", va="center", color="black", fontsize=8)
-
-        ax5.set_xticks(range(len(optimize_features)))
-        ax5.set_yticks(range(len(optimize_features)))
-        ax5.set_xticklabels(optimize_features, rotation=45, ha='right', fontsize=8)
-        ax5.set_yticklabels(optimize_features, fontsize=8)
-        ax5.set_title('Корреляция параметров в лучших решениях', fontsize=14, fontweight='bold')
-
-        plt.colorbar(im, ax=ax5, label='Коэффициент корреляции')
-        plt.tight_layout()
-
-        if save_folder:
-            save_path5 = os.path.join(save_folder, '05_parameters_correlation.png')
-            plt.savefig(save_path5, dpi=300, bbox_inches='tight')
-            print(f"📁 Тепловая карта корреляций сохранена: {save_path5}")
-        plt.show()
-        plt.close(fig5)
-
-    # 6. Эволюция лучшего решения (дополнительный график)
-    fig6, ax6 = plt.subplots(figsize=(10, 6))
-
-    # Показываем изменение лучшего значения относительно начального
     best_history = result['history']['best']
     improvement = [b - best_history[0] for b in best_history]
 
-    ax6.plot(generations, improvement, 'g-', linewidth=2)
-    ax6.fill_between(generations, 0, improvement, alpha=0.3, color='green')
-    ax6.set_xlabel('Поколение', fontsize=12)
-    ax6.set_ylabel(f'Улучшение {target}', fontsize=12)
-    ax6.set_title('Динамика улучшения результата', fontsize=14, fontweight='bold')
-    ax6.grid(True, alpha=0.3)
-    ax6.axhline(y=0, color='black', linestyle='-', linewidth=0.5)
+    ax4.plot(generations, improvement, 'g-', linewidth=2)
+    ax4.fill_between(generations, 0, improvement, alpha=0.3, color='green')
+    ax4.set_xlabel('Поколение', fontsize=12)
+    ax4.set_ylabel(f'Улучшение {target}', fontsize=12)
+    ax4.set_title('Динамика улучшения результата', fontsize=14, fontweight='bold')
+    ax4.grid(True, alpha=0.3)
+    ax4.axhline(y=0, color='black', linestyle='-', linewidth=0.5)
 
     plt.tight_layout()
 
     if save_folder:
-        save_path6 = os.path.join(save_folder, '06_improvement_dynamics.png')
-        plt.savefig(save_path6, dpi=300, bbox_inches='tight')
-        print(f"📁 График динамики улучшения сохранен: {save_path6}")
+        save_path4 = os.path.join(save_folder, '04_improvement_dynamics.png')
+        plt.savefig(save_path4, dpi=300, bbox_inches='tight')
+        print(f"📁 График динамики улучшения сохранен: {save_path4}")
     plt.show()
-    plt.close(fig6)
+    plt.close(fig4)
 
-
-def save_optimization_details(result, optimize_features, target, save_folder):
-    """Сохранение детальных результатов оптимизации в CSV"""
-
-    # Сохраняем историю оптимизации
-    history_df = pd.DataFrame({
-        'generation': range(len(result['history']['best'])),
-        'best_fitness': result['history']['best'],
-        'mean_fitness': result['history']['mean']
-    })
-    history_path = os.path.join(save_folder, 'optimization_history.csv')
-    history_df.to_csv(history_path, index=False, encoding='utf-8-sig')
-    print(f"📁 История оптимизации сохранена: {history_path}")
-
-    # Сохраняем топ-100 решений
-    top_solutions = []
-    for i, r in enumerate(result['results'][:100]):
-        solution = {'rank': i + 1, 'fitness': r['fitness']}
-        for col, val in r['parameters'].items():
-            solution[col] = val
-        top_solutions.append(solution)
-
-    solutions_df = pd.DataFrame(top_solutions)
-    solutions_path = os.path.join(save_folder, 'top_solutions.csv')
-    solutions_df.to_csv(solutions_path, index=False, encoding='utf-8-sig')
-    print(f"📁 Топ-100 решений сохранены: {solutions_path}")
-
-    # Сохраняем лучшее решение отдельно
-    best_solution = {'parameter': [], 'optimal_value': [], 'min_bound': [], 'max_bound': [], 'mean_value': []}
-    for col in optimize_features:
-        best_solution['parameter'].append(col)
-        best_solution['optimal_value'].append(result['best_individual'][col])
-        best_solution['min_bound'].append(bounds[col]['min'])
-        best_solution['max_bound'].append(bounds[col]['max'])
-        best_solution['mean_value'].append(bounds[col]['mean'])
-
-    best_df = pd.DataFrame(best_solution)
-    best_path = os.path.join(save_folder, 'best_solution.csv')
-    best_df.to_csv(best_path, index=False, encoding='utf-8-sig')
-    print(f"📁 Лучшее решение сохранено: {best_path}")
 
 def save_optimization_results(result, optimize_features, target, save_folder):
     """Сохранение результатов оптимизации в файл"""
@@ -588,13 +456,6 @@ def save_optimization_results(result, optimize_features, target, save_folder):
         f.write("Оптимальные параметры:\n")
         for col, val in result['best_individual'].items():
             f.write(f"  {col}: {val:.6f}\n")
-
-        f.write("\nТОП-10 ЛУЧШИХ РЕШЕНИЙ\n")
-        f.write("-" * 40 + "\n")
-        for i, r in enumerate(result['results'][:10]):
-            f.write(f"\n{i + 1}. Значение = {r['fitness']:.6f}\n")
-            for col, val in r['parameters'].items():
-                f.write(f"    {col}: {val:.6f}\n")
 
         f.write("\nПАРАМЕТРЫ ОПТИМИЗАЦИИ\n")
         f.write("-" * 40 + "\n")
