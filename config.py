@@ -34,7 +34,7 @@ RF_PARAMS = {
 
 # XGBoost параметры
 XGB_PARAMS = {
-    'n_estimators': 200,
+    'n_estimators': 300,
     'max_depth': 6,
     'learning_rate': 0.05,
     'subsample': 0.8,
