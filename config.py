@@ -29,13 +29,13 @@ RF_PARAMS = {
     'max_features': 'sqrt',
     'bootstrap': True,
     'oob_score': True,
-    'n_jobs': 1  # 1 поток для избежания проблем
+    'n_jobs': 1
 }
 
 # XGBoost параметры
 XGB_PARAMS = {
-    'n_estimators': 300,
-    'max_depth': 6,
+    'n_estimators': 200,
+    'max_depth': 8,
     'learning_rate': 0.05,
     'subsample': 0.8,
     'colsample_bytree': 0.8,
@@ -46,18 +46,35 @@ XGB_PARAMS = {
     'verbosity': 0
 }
 
+# ============= НЕЙРОСЕТЬ (MLP) ПАРАМЕТРЫ =============
+MLP_PARAMS = {
+    'hidden_layer_sizes': (100, 50, 50),  # Два скрытых слоя: 100 и 50 нейронов
+    'activation': 'relu',              # Функция активации
+    'solver': 'adam',                  # Оптимизатор
+    'alpha': 0.0001,                   # L2 регуляризация
+    'batch_size': 'auto',              # Размер батча
+    'learning_rate': 'adaptive',       # Адаптивная скорость обучения
+    'learning_rate_init': 0.001,       # Начальная скорость обучения
+    'max_iter': 500,                   # Максимальное количество эпох
+    'early_stopping': True,            # Ранняя остановка
+    'validation_fraction': 0.1,        # Доля валидационной выборки
+    'tol': 0.0001,                     # Допуск для остановки
+    'random_state': RANDOM_STATE,
+    'verbose': False
+}
+
 # ============= ПАРАМЕТРЫ ВИЗУАЛИЗАЦИИ =============
-FIGURE_DPI = 300  # Качество сохраняемых графиков
-PLOT_SIZE = (15, 4)  # Базовый размер графиков
+FIGURE_DPI = 300
+PLOT_SIZE = (15, 4)
 
 # ============= ПАРАМЕТРЫ ФИЛЬТРАЦИИ =============
-IQR_MULTIPLIER = 1.5  # Множитель для IQR метода
-MAD_THRESHOLD = 3.5  # Порог для MAD метода
-ROLLING_WINDOW = 10  # Размер окна для скользящего метода
-ROLLING_THRESHOLD = 3  # Порог для скользящего метода
-DERIVATIVE_MULTIPLIER = 5  # Множитель для метода производной
-PEAK_PROMINENCE = 0.5  # Prominence для поиска пиков
-PEAK_DISTANCE = 10  # Расстояние между пиками
-SAVGOL_WINDOW = 21  # Длина окна для фильтра Савицкого-Голая
-SAVGOL_POLYORDER = 3  # Порядок полинома для фильтра Савицкого-Голая
-ISOLATION_FOREST_CONTAMINATION = 0.1  # Доля выбросов для Isolation Forest
+IQR_MULTIPLIER = 1.5
+MAD_THRESHOLD = 3.5
+ROLLING_WINDOW = 10
+ROLLING_THRESHOLD = 3
+DERIVATIVE_MULTIPLIER = 5
+PEAK_PROMINENCE = 0.5
+PEAK_DISTANCE = 10
+SAVGOL_WINDOW = 21
+SAVGOL_POLYORDER = 3
+ISOLATION_FOREST_CONTAMINATION = 0.1

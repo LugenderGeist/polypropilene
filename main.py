@@ -300,27 +300,29 @@ def main():
                 f"\nИспользовать лучшее окно (строки {best_window['start_row']}-{best_window['end_row']}) для моделирования? (да/нет): ").strip().lower()
             if use_window in ['да', 'yes', 'y', 'д']:
                 data_for_model = best_window_data
-                print(f"\nМодель будет построена на данных лучшего окна ({len(data_for_model)} строк)")
+                print(f"\n✅ Модель будет построена на данных лучшего окна ({len(data_for_model)} строк)")
             else:
                 data_for_model = df_processed
-                print(f"\nМодель будет построена на всех данных ({len(data_for_model)} строк)")
+                print(f"\n✅ Модель будет построена на всех данных ({len(data_for_model)} строк)")
         else:
             data_for_model = df_processed
-            print(f"\nМодель будет построена на всех данных ({len(data_for_model)} строк)")
+            print(f"\n✅ Модель будет построена на всех данных ({len(data_for_model)} строк)")
 
-        print("\nВыберите действие:")
-        print("1. Обучить Random Forest")
-        print("2. Обучить XGBoost")
-        print("3. Завершить работу")
+        print("\nВыберите модель для обучения:")
+        print("1. 🌲 Random Forest")
+        print("2. 🚀 XGBoost")
+        print("3. 🧠 Нейросеть (MLP)")
+        print("4. ❌ Завершить работу")
 
-        model_choice = input("\nВаш выбор (1/2/3): ").strip()
+        model_choice = input("\nВаш выбор (1/2/3/4): ").strip()
 
+        # ============= RANDOM FOREST =============
         if model_choice == '1':
             try:
                 from modeling import build_random_forest_model
 
                 print("\n" + "=" * 80)
-                print("ПОСТРОЕНИЕ МОДЕЛИ RANDOM FOREST")
+                print("🌲 ПОСТРОЕНИЕ МОДЕЛИ RANDOM FOREST")
                 print("=" * 80)
 
                 results, model, importance = build_random_forest_model(
@@ -329,20 +331,43 @@ def main():
                 )
 
                 if results:
-                    print(f"\n✅ Модель Random Forest обучена")
-                    print(f"   Результаты сохранены в: {modeling_folder}")
+                    print("\n" + "=" * 80)
+                    print("📊 РЕЗУЛЬТАТЫ RANDOM FOREST")
+                    print("=" * 80)
+                    print(f"\n🎯 Целевая переменная: {results['target']}")
+                    print(f"📊 R² на обучающей выборке: {results['r2_train']:.4f}")
+                    print(f"📊 R² на тестовой выборке: {results['r2_test']:.4f}")
+                    print(f"📉 RMSE на тестовой выборке: {results['rmse_test']:.4f}")
+                    print(f"📊 MAE на тестовой выборке: {results['mae_test']:.4f}")
+
+                    overfitting_gap = results['r2_train'] - results['r2_test']
+                    if overfitting_gap > 0.1:
+                        print(f"⚠️ Внимание: разница R² = {overfitting_gap:.4f} (возможно переобучение)")
+                    elif overfitting_gap > 0.05:
+                        print(f"⚠️ Небольшое переобучение: разница R² = {overfitting_gap:.4f}")
+                    else:
+                        print(f"✅ Переобучение не обнаружено (разница R² = {overfitting_gap:.4f})")
+
+                    print(f"\n📁 Полные результаты сохранены в: {modeling_folder}")
+                    print(f"   - random_forest_report.txt")
+                    print(f"   - random_forest_r2_comparison.png")
+                    print(f"   - random_forest_metrics_comparison.png")
+                    print(f"   - random_forest_feature_importance.png")
+                    print(f"   - random_forest_predictions_vs_actual.png")
+                    print(f"   - random_forest_feature_importance.csv")
 
             except ImportError as e:
                 print(f"Ошибка импорта: {e}")
             except Exception as e:
                 print(f"Ошибка при построении модели: {e}")
 
+        # ============= XGBOOST =============
         elif model_choice == '2':
             try:
                 from modeling import build_xgboost_model
 
                 print("\n" + "=" * 80)
-                print("ПОСТРОЕНИЕ МОДЕЛИ XGBOOST")
+                print("🚀 ПОСТРОЕНИЕ МОДЕЛИ XGBOOST")
                 print("=" * 80)
 
                 results, model, importance = build_xgboost_model(
@@ -351,8 +376,30 @@ def main():
                 )
 
                 if results:
-                    print(f"\n✅ Модель XGBoost обучена")
-                    print(f"   Результаты сохранены в: {modeling_folder}")
+                    print("\n" + "=" * 80)
+                    print("📊 РЕЗУЛЬТАТЫ XGBOOST")
+                    print("=" * 80)
+                    print(f"\n🎯 Целевая переменная: {results['target']}")
+                    print(f"📊 R² на обучающей выборке: {results['r2_train']:.4f}")
+                    print(f"📊 R² на тестовой выборке: {results['r2_test']:.4f}")
+                    print(f"📉 RMSE на тестовой выборке: {results['rmse_test']:.4f}")
+                    print(f"📊 MAE на тестовой выборке: {results['mae_test']:.4f}")
+
+                    overfitting_gap = results['r2_train'] - results['r2_test']
+                    if overfitting_gap > 0.1:
+                        print(f"⚠️ Внимание: разница R² = {overfitting_gap:.4f} (возможно переобучение)")
+                    elif overfitting_gap > 0.05:
+                        print(f"⚠️ Небольшое переобучение: разница R² = {overfitting_gap:.4f}")
+                    else:
+                        print(f"✅ Переобучение не обнаружено (разница R² = {overfitting_gap:.4f})")
+
+                    print(f"\n📁 Полные результаты сохранены в: {modeling_folder}")
+                    print(f"   - xgboost_report.txt")
+                    print(f"   - xgboost_r2_comparison.png")
+                    print(f"   - xgboost_metrics_comparison.png")
+                    print(f"   - xgboost_feature_importance.png")
+                    print(f"   - xgboost_predictions_vs_actual.png")
+                    print(f"   - xgboost_feature_importance.csv")
 
             except ImportError as e:
                 print(f"Ошибка импорта: {e}")
@@ -360,12 +407,58 @@ def main():
             except Exception as e:
                 print(f"Ошибка при построении модели: {e}")
 
+        # ============= НЕЙРОСЕТЬ (MLP) =============
         elif model_choice == '3':
-            print("\nЗавершение работы с моделями...")
+            try:
+                from modeling import build_mlp_model
+
+                print("\n" + "=" * 80)
+                print("🧠 ПОСТРОЕНИЕ НЕЙРОСЕТИ (MLP)")
+                print("=" * 80)
+
+                results, model, importance = build_mlp_model(
+                    data_for_model, input_columns, output_columns,
+                    save_folder=modeling_folder
+                )
+
+                if results:
+                    print("\n" + "=" * 80)
+                    print("📊 РЕЗУЛЬТАТЫ НЕЙРОСЕТИ (MLP)")
+                    print("=" * 80)
+                    print(f"\n🎯 Целевая переменная: {results['target']}")
+                    print(f"📊 R² на обучающей выборке: {results['r2_train']:.4f}")
+                    print(f"📊 R² на тестовой выборке: {results['r2_test']:.4f}")
+                    print(f"📉 RMSE на тестовой выборке: {results['rmse_test']:.4f}")
+                    print(f"📊 MAE на тестовой выборке: {results['mae_test']:.4f}")
+
+                    overfitting_gap = results['r2_train'] - results['r2_test']
+                    if overfitting_gap > 0.1:
+                        print(f"⚠️ Внимание: разница R² = {overfitting_gap:.4f} (возможно переобучение)")
+                    elif overfitting_gap > 0.05:
+                        print(f"⚠️ Небольшое переобучение: разница R² = {overfitting_gap:.4f}")
+                    else:
+                        print(f"✅ Переобучение не обнаружено (разница R² = {overfitting_gap:.4f})")
+
+                    print(f"\n📁 Полные результаты сохранены в: {modeling_folder}")
+                    print(f"   - mlp_report.txt")
+                    print(f"   - mlp_r2_comparison.png")
+                    print(f"   - mlp_metrics_comparison.png")
+                    print(f"   - mlp_feature_importance.png")
+                    print(f"   - mlp_predictions_vs_actual.png")
+                    print(f"   - mlp_feature_importance.csv")
+
+            except ImportError as e:
+                print(f"Ошибка импорта: {e}")
+            except Exception as e:
+                print(f"Ошибка при построении нейросети: {e}")
+
+        # ============= ЗАВЕРШЕНИЕ =============
+        elif model_choice == '4':
+            print("\n✅ Завершение работы с моделями...")
             break
 
         else:
-            print("Неверный выбор. Пожалуйста, выберите 1, 2 или 3.")
+            print("❌ Неверный выбор. Пожалуйста, выберите 1, 2, 3 или 4.")
 
     # ============= ИТОГОВАЯ ИНФОРМАЦИЯ =============
     print("\n" + "=" * 60)
