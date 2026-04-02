@@ -34,11 +34,11 @@ def interactive_bounds_adjustment(df, all_columns, input_columns, output_columns
     if not os.path.exists(filter_folder):
         os.makedirs(filter_folder)
 
-    # Показываем начальные графики
-    print("\n" + "=" * 80)
-    print("НАЧАЛЬНЫЕ ГРАФИКИ С ГРАНИЦАМИ ±50% ОТ СРЕДНЕГО")
-    print("=" * 80)
-    plot_all_columns(df, bounds_config, input_columns, output_columns, adjusted_folder)
+    # Убираем этот блок - он дублирует графики из main.py
+    # print("\n" + "=" * 80)
+    # print("НАЧАЛЬНЫЕ ГРАФИКИ С ГРАНИЦАМИ ±50% ОТ СРЕДНЕГО")
+    # print("=" * 80)
+    # plot_all_columns(df, bounds_config, input_columns, output_columns, adjusted_folder)
 
     # Интерактивный цикл изменения границ
     while True:

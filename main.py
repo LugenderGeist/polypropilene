@@ -1,9 +1,9 @@
 import os
 import pandas as pd
-import numpy as np
+from config import INPUT_FILE, MIN_WINDOW_SIZE, DEFAULT_BOUNDS_PERCENT
 from utils import (load_data, create_plots_folder, setup_columns,
                    save_bounds_config, remove_outliers, save_cleaned_data)
-from visualization import (plot_all_columns, plot_raw_data, save_initial_plots,
+from visualization import (plot_all_columns, plot_raw_data,
                            plot_correlation_heatmap, plot_correlation_with_target)
 from interactive_menu import interactive_bounds_adjustment
 from window_correlation_analysis import (find_best_window, plot_best_window_heatmap,
@@ -16,17 +16,18 @@ def main():
     print("ЗАГРУЗКА ДАННЫХ")
     print("=" * 60)
 
-    file_path = 'ПП.csv'
-    df, encoding = load_data(file_path)
+    df, encoding = load_data(INPUT_FILE)
 
     if df is None:
         return
+
+    print(f"\n📊 Всего столбцов в файле: {df.shape[1]}")
 
     # Настройка входных и выходных столбцов
     input_columns, output_columns = setup_columns(df)
     all_data_columns = input_columns + output_columns
 
-    # Создаем основную папку для сохранения графиков
+    # Создаем основную папку для сохранения
     main_plots_folder = create_plots_folder()
 
     # ============= 1. ИСХОДНЫЕ ДАННЫЕ =============
@@ -34,10 +35,8 @@ def main():
     print("1. ИСХОДНЫЕ ДАННЫЕ")
     print("=" * 80)
 
-    # Создаем папку для исходных данных
     raw_data_folder = os.path.join(main_plots_folder, '01_raw_data')
-    if not os.path.exists(raw_data_folder):
-        os.makedirs(raw_data_folder)
+    os.makedirs(raw_data_folder, exist_ok=True)
 
     print("\n1.1. Графики сырых данных")
     input("Нажмите Enter, чтобы показать графики...")
@@ -48,6 +47,11 @@ def main():
     plot_correlation_heatmap(df, input_columns, output_columns,
                              save_folder=raw_data_folder,
                              title="Тепловая карта корреляций (исходные данные)")
+
+    # Сохраняем исходные данные
+    original_csv_path = os.path.join(raw_data_folder, 'original_data.csv')
+    df.to_csv(original_csv_path, index=False, encoding='utf-8-sig')
+    print(f"\n📁 Исходные данные сохранены в: {original_csv_path}")
 
     # ============= 2. ВЫБОР РЕЖИМА РАБОТЫ =============
     print("\n" + "=" * 80)
@@ -63,6 +67,7 @@ def main():
     bounds_config = None
     df_processed = df.copy()
     processed_data_folder = None
+    cleaned_data_saved = False
 
     if mode_choice == '1':
         # ============= ПОЛНЫЙ РЕЖИМ: ОБРАБОТКА ДАННЫХ =============
@@ -72,8 +77,7 @@ def main():
 
         # Создаем папку для обработанных данных
         processed_data_folder = os.path.join(main_plots_folder, '02_processed_data')
-        if not os.path.exists(processed_data_folder):
-            os.makedirs(processed_data_folder)
+        os.makedirs(processed_data_folder, exist_ok=True)
 
         print("\n2.1. Графики с границами ±50%")
         input("Нажмите Enter, чтобы показать графики...")
@@ -87,8 +91,8 @@ def main():
                     mean_val = data.mean()
                     temp_config[col] = {
                         'mean': mean_val,
-                        'lower': mean_val * 0.5,
-                        'upper': mean_val * 1.5,
+                        'lower': mean_val * (1 - DEFAULT_BOUNDS_PERCENT / 100),
+                        'upper': mean_val * (1 + DEFAULT_BOUNDS_PERCENT / 100),
                         'data_type': 'Входные' if col in input_columns else 'Выходные'
                     }
             except:
@@ -101,23 +105,8 @@ def main():
         bounds_config = interactive_bounds_adjustment(df, all_data_columns, input_columns, output_columns,
                                                       processed_data_folder)
 
-        # Показываем графики с новыми границами
-        print("\n2.2. Графики с настроенными границами")
-        input("Нажмите Enter, чтобы показать графики...")
-
-        plot_all_columns(df, bounds_config, input_columns, output_columns,
-                         save_folder=processed_data_folder)
-
-        # Тепловая карта после настройки границ
-        print("\n2.3. Тепловая карта после настройки границ")
-        input("Нажмите Enter, чтобы построить тепловую карту...")
-
-        plot_correlation_heatmap(df, input_columns, output_columns,
-                                 save_folder=processed_data_folder,
-                                 title="Тепловая карта корреляций (после настройки границ)")
-
         # Удаление выбросов
-        print("\n2.4. Удаление выбросов")
+        print("\n2.2. Удаление выбросов")
         remove_choice = input(
             "Хотите удалить строки с выбросами (точки за пределами границ)? (да/нет): ").strip().lower()
 
@@ -127,7 +116,7 @@ def main():
             if len(removed_indices) > 0:
                 df_processed = df_cleaned
 
-                print("\n2.5. Графики очищенных данных")
+                print("\n2.3. Графики очищенных данных")
                 input("Нажмите Enter, чтобы показать графики...")
 
                 plot_all_columns(df_cleaned, bounds_config, input_columns, output_columns,
@@ -135,8 +124,61 @@ def main():
 
                 print(f"\nУдалено строк: {len(removed_indices)}")
                 print(f"Осталось строк: {len(df_cleaned)}")
+
+                # ============= ТЕПЛОВАЯ КАРТА ДЛЯ ОЧИЩЕННЫХ ДАННЫХ =============
+                print("\n2.4. Тепловая карта корреляций (очищенные данные)")
+                input("Нажмите Enter, чтобы построить тепловую карту для очищенных данных...")
+
+                plot_correlation_heatmap(df_cleaned, input_columns, output_columns,
+                                         save_folder=processed_data_folder,
+                                         title="Тепловая карта корреляций (очищенные данные)")
+
+                # ============= СОХРАНЕНИЕ ОЧИЩЕННЫХ ДАННЫХ =============
+                print("\n" + "=" * 80)
+                print("СОХРАНЕНИЕ ОЧИЩЕННЫХ ДАННЫХ")
+                print("=" * 80)
+
+                # Сохраняем очищенные данные
+                cleaned_path, info_path = save_cleaned_data(df_cleaned, 'ПП.csv', processed_data_folder)
+                cleaned_data_saved = True
+
+                # Сохраняем информацию об удалении
+                with open(info_path, 'w', encoding='utf-8') as f:
+                    f.write("ИНФОРМАЦИЯ ОБ УДАЛЕНИИ ВЫБРОСОВ\n")
+                    f.write("=" * 50 + "\n\n")
+                    f.write(f"Исходное количество строк: {len(df)}\n")
+                    f.write(f"Удалено строк: {len(removed_indices)}\n")
+                    f.write(f"Осталось строк: {len(df_cleaned)}\n\n")
+                    f.write("Удаленные индексы:\n")
+                    f.write(str(removed_indices) + "\n\n")
+                    f.write("Детали по столбцам:\n")
+                    for col, report in removal_report.items():
+                        f.write(f"\n{col}:\n")
+                        f.write(f"  Количество выбросов: {report['outlier_count']}\n")
+                        f.write(f"  Процент выбросов: {report['outlier_percent']:.2f}%\n")
+                        f.write(f"  Индексы выбросов: {report['indices']}\n")
+
+                print(f"📁 Очищенные данные сохранены в: {cleaned_path}")
+                print(f"📄 Информация об удалении сохранена в: {info_path}")
+
             else:
                 print("\nВыбросов не обнаружено. Очистка не требуется.")
+                save_current = input(
+                    "\nСохранить текущие данные (с настроенными границами) в CSV? (да/нет): ").strip().lower()
+                if save_current in ['да', 'yes', 'y', 'д']:
+                    current_path = os.path.join(processed_data_folder, 'data_with_bounds.csv')
+                    df.to_csv(current_path, index=False, encoding='utf-8-sig')
+                    print(f"📁 Данные сохранены в: {current_path}")
+                    cleaned_data_saved = True
+        else:
+            # Пользователь не захотел удалять выбросы
+            save_current = input(
+                "\nСохранить текущие данные (с настроенными границами) в CSV? (да/нет): ").strip().lower()
+            if save_current in ['да', 'yes', 'y', 'д']:
+                current_path = os.path.join(processed_data_folder, 'data_with_bounds.csv')
+                df.to_csv(current_path, index=False, encoding='utf-8-sig')
+                print(f"📁 Данные сохранены в: {current_path}")
+                cleaned_data_saved = True
 
         # Сохраняем конфигурацию границ
         if bounds_config:
@@ -155,9 +197,18 @@ def main():
         print("Вы пропустили этапы настройки границ и фильтрации выбросов.")
         print("Данные будут использованы в исходном виде.")
 
+        print("\nСохранить исходные данные в отдельный файл?")
+        save_original = input("(да/нет): ").strip().lower()
+        if save_original in ['да', 'yes', 'y', 'д']:
+            quick_folder = os.path.join(main_plots_folder, 'quick_mode_data')
+            os.makedirs(quick_folder, exist_ok=True)
+            quick_path = os.path.join(quick_folder, 'original_data.csv')
+            df.to_csv(quick_path, index=False, encoding='utf-8-sig')
+            print(f"📁 Исходные данные сохранены в: {quick_path}")
+
         df_processed = df.copy()
 
-        # Создаем базовую конфигурацию границ для отображения (если понадобится)
+        # Создаем базовую конфигурацию границ для отображения
         bounds_config = {}
         for col in all_data_columns:
             try:
@@ -166,8 +217,8 @@ def main():
                     mean_val = data.mean()
                     bounds_config[col] = {
                         'mean': mean_val,
-                        'lower': mean_val * 0.5,
-                        'upper': mean_val * 1.5,
+                        'lower': mean_val * (1 - DEFAULT_BOUNDS_PERCENT / 100),
+                        'upper': mean_val * (1 + DEFAULT_BOUNDS_PERCENT / 100),
                         'data_type': 'Входные' if col in input_columns else 'Выходные'
                     }
             except:
@@ -186,8 +237,8 @@ def main():
                     mean_val = data.mean()
                     bounds_config[col] = {
                         'mean': mean_val,
-                        'lower': mean_val * 0.5,
-                        'upper': mean_val * 1.5,
+                        'lower': mean_val * (1 - DEFAULT_BOUNDS_PERCENT / 100),
+                        'upper': mean_val * (1 + DEFAULT_BOUNDS_PERCENT / 100),
                         'data_type': 'Входные' if col in input_columns else 'Выходные'
                     }
             except:
@@ -205,19 +256,20 @@ def main():
     best_window_folder = None
 
     if search_window in ['да', 'yes', 'y', 'д']:
-        # Создаем папку для лучшего окна
         best_window_folder = os.path.join(main_plots_folder, '03_best_window')
-        if not os.path.exists(best_window_folder):
-            os.makedirs(best_window_folder)
+        os.makedirs(best_window_folder, exist_ok=True)
 
         print("\n" + "=" * 80)
         print("ПОИСК ЛУЧШЕГО ОКНА ДАННЫХ")
         print("=" * 80)
 
         best_window, best_window_data = find_best_window(df_processed, input_columns, output_columns,
-                                                         min_window_size=2000)
+                                                         min_window_size=MIN_WINDOW_SIZE)
 
         if best_window is not None:
+            start = best_window['start_row']
+            end = best_window['end_row']
+
             # Сохраняем данные и графики окна
             save_best_window_data(df_processed, best_window, input_columns, output_columns, best_window_folder)
 
@@ -234,12 +286,9 @@ def main():
         print("\nПоиск лучшего окна пропущен.")
 
     # ============= 4. ПОСТРОЕНИЕ МОДЕЛИ =============
-    # Создаем папку для результатов моделирования
     modeling_folder = os.path.join(main_plots_folder, '04_modeling_results')
-    if not os.path.exists(modeling_folder):
-        os.makedirs(modeling_folder)
+    os.makedirs(modeling_folder, exist_ok=True)
 
-    # Цикл выбора модели
     while True:
         print("\n" + "=" * 80)
         print("4. ПОСТРОЕНИЕ МОДЕЛИ")
@@ -267,7 +316,6 @@ def main():
         model_choice = input("\nВаш выбор (1/2/3): ").strip()
 
         if model_choice == '1':
-            # Random Forest
             try:
                 from modeling import build_random_forest_model
 
@@ -277,9 +325,7 @@ def main():
 
                 results, model, importance = build_random_forest_model(
                     data_for_model, input_columns, output_columns,
-                    save_folder=modeling_folder,
-                    test_size=0.2,
-                    random_state=42
+                    save_folder=modeling_folder
                 )
 
                 if results:
@@ -292,7 +338,6 @@ def main():
                 print(f"Ошибка при построении модели: {e}")
 
         elif model_choice == '2':
-            # XGBoost
             try:
                 from modeling import build_xgboost_model
 
@@ -302,9 +347,7 @@ def main():
 
                 results, model, importance = build_xgboost_model(
                     data_for_model, input_columns, output_columns,
-                    save_folder=modeling_folder,
-                    test_size=0.2,
-                    random_state=42
+                    save_folder=modeling_folder
                 )
 
                 if results:

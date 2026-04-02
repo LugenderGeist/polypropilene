@@ -2,6 +2,7 @@ import os
 import chardet
 import pandas as pd
 from datetime import datetime
+from config import ENCODINGS_TO_TRY  # Добавляем импорт из config
 
 
 # Функция для определения кодировки файла
@@ -36,9 +37,8 @@ def load_data(file_path):
         return df, encoding
     except Exception as e:
         print(f"Ошибка при чтении файла: {e}")
-        # Пробуем альтернативные кодировки
-        encodings_to_try = ['cp1251', 'windows-1251', 'cp1252', 'latin1', 'iso-8859-1', 'utf-8-sig']
-        for enc in encodings_to_try:
+        # Пробуем альтернативные кодировки из config
+        for enc in ENCODINGS_TO_TRY:
             try:
                 df = pd.read_csv(file_path, encoding=enc)
                 # Преобразуем все столбцы в числовой формат
@@ -101,6 +101,7 @@ def setup_columns(df):
 
     return input_columns, output_columns
 
+
 # Функция для удаления выбросов из данных
 def remove_outliers(df, bounds_config, all_columns):
     """
@@ -150,12 +151,6 @@ def remove_outliers(df, bounds_config, all_columns):
         print("=" * 80)
         print(f"Всего удалено строк: {total_removed_rows} из {len(df)} ({total_removed_rows / len(df) * 100:.2f}%)")
         print(f"Осталось строк: {len(df_cleaned)}")
-
-        if len(removed_indices) <= 20:
-            print(f"Удаленные индексы: {removed_indices}")
-        else:
-            print(f"Удаленные индексы (первые 20): {removed_indices[:20]}...")
-            print(f"Всего удалено индексов: {len(removed_indices)}")
 
         return df_cleaned, removed_indices, removal_report
     else:
