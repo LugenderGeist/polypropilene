@@ -6,8 +6,6 @@ from outlier_filter import apply_outlier_filter, visualize_outlier_filter
 
 
 def interactive_bounds_adjustment(df, all_columns, input_columns, output_columns, save_folder):
-    """Интерактивное изменение границ для каждого столбца"""
-
     # Инициализация конфигурации границ
     bounds_config = {}
     for col in all_columns:

@@ -1,6 +1,7 @@
 import os
 import pandas as pd
-from config import INPUT_FILE, MIN_WINDOW_SIZE, DEFAULT_BOUNDS_PERCENT
+from config import (INPUT_FILE, MIN_WINDOW_SIZE, DEFAULT_BOUNDS_PERCENT,
+                    OPTIMIZATION_TOP_FEATURES)
 from utils import (load_data, create_plots_folder, setup_columns,
                    save_bounds_config, remove_outliers, save_cleaned_data)
 from visualization import (plot_all_columns, plot_raw_data,
@@ -39,11 +40,9 @@ def main():
     os.makedirs(raw_data_folder, exist_ok=True)
 
     print("\n1.1. Графики сырых данных")
-    input("Нажмите Enter, чтобы показать графики...")
     plot_raw_data(df, input_columns, output_columns, save_folder=raw_data_folder)
 
     print("\n1.2. Тепловая карта корреляций")
-    input("Нажмите Enter, чтобы построить тепловую карту...")
     plot_correlation_heatmap(df, input_columns, output_columns,
                              save_folder=raw_data_folder,
                              title="Тепловая карта корреляций (исходные данные)")
@@ -460,6 +459,33 @@ def main():
         else:
             print("❌ Неверный выбор. Пожалуйста, выберите 1, 2, 3 или 4.")
 
+    if results:
+        optimize_choice = input(
+            f"\nПровести оптимизацию входных параметров для максимизации {results['target']}? (да/нет): ").strip().lower()
+
+        if optimize_choice in ['да', 'yes', 'y', 'д']:
+            try:
+                from optimization import run_optimization
+
+                optimization_folder = os.path.join(modeling_folder, 'optimization')
+                os.makedirs(optimization_folder, exist_ok=True)
+
+                # Всё! Параметры берутся из config.py автоматически
+                opt_result = run_optimization(
+                    df_original=df_processed,
+                    model=model,
+                    input_columns=input_columns,
+                    output_columns=output_columns,
+                    save_folder=optimization_folder
+                )
+
+                if opt_result:
+                    print(f"\n✅ Оптимизация завершена!")
+                    print(f"   Лучшее значение: {opt_result['best_fitness']:.4f}")
+
+            except Exception as e:
+                print(f"Ошибка при оптимизации: {e}")
+
     # ============= ИТОГОВАЯ ИНФОРМАЦИЯ =============
     print("\n" + "=" * 60)
     print("ИТОГОВАЯ СТРУКТУРА СОХРАНЕННЫХ ДАННЫХ")
@@ -475,7 +501,6 @@ def main():
     print("\n" + "=" * 60)
     print("ГОТОВО!")
     print("=" * 60)
-
 
 if __name__ == "__main__":
     main()

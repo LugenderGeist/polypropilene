@@ -4,21 +4,20 @@
 """
 
 # ============= ПУТИ К ФАЙЛАМ =============
-INPUT_FILE = 'ПП.csv'  # Путь к исходному файлу с данными
+INPUT_FILE = 'ПП.csv'
 
 # ============= ПАРАМЕТРЫ ЗАГРУЗКИ =============
 ENCODINGS_TO_TRY = ['cp1251', 'windows-1251', 'cp1252', 'latin1', 'iso-8859-1', 'utf-8-sig']
 
 # ============= ПАРАМЕТРЫ ГРАНИЦ (по умолчанию) =============
-DEFAULT_BOUNDS_PERCENT = 50  # Границы ±X% от среднего
+DEFAULT_BOUNDS_PERCENT = 50
 
 # ============= ПАРАМЕТРЫ ПОИСКА ОКНА =============
-MIN_WINDOW_SIZE = 2000  # Минимальный размер окна для поиска
+MIN_WINDOW_SIZE = 2000
 
 # ============= ПАРАМЕТРЫ МОДЕЛЕЙ =============
-# Общие параметры
-TEST_SIZE = 0.2  # Доля тестовой выборки
-RANDOM_STATE = 42  # Seed для воспроизводимости
+TEST_SIZE = 0.2
+RANDOM_STATE = 42
 
 # Random Forest параметры
 RF_PARAMS = {
@@ -35,7 +34,7 @@ RF_PARAMS = {
 # XGBoost параметры
 XGB_PARAMS = {
     'n_estimators': 200,
-    'max_depth': 8,
+    'max_depth': 6,
     'learning_rate': 0.05,
     'subsample': 0.8,
     'colsample_bytree': 0.8,
@@ -46,22 +45,30 @@ XGB_PARAMS = {
     'verbosity': 0
 }
 
-# ============= НЕЙРОСЕТЬ (MLP) ПАРАМЕТРЫ =============
+# Нейросеть (MLP) параметры
 MLP_PARAMS = {
-    'hidden_layer_sizes': (100, 50, 50),  # Два скрытых слоя: 100 и 50 нейронов
-    'activation': 'relu',              # Функция активации
-    'solver': 'adam',                  # Оптимизатор
-    'alpha': 0.0001,                   # L2 регуляризация
-    'batch_size': 'auto',              # Размер батча
-    'learning_rate': 'adaptive',       # Адаптивная скорость обучения
-    'learning_rate_init': 0.001,       # Начальная скорость обучения
-    'max_iter': 500,                   # Максимальное количество эпох
-    'early_stopping': True,            # Ранняя остановка
-    'validation_fraction': 0.1,        # Доля валидационной выборки
-    'tol': 0.0001,                     # Допуск для остановки
+    'hidden_layer_sizes': (100, 50),
+    'activation': 'relu',
+    'solver': 'adam',
+    'alpha': 0.0001,
+    'batch_size': 'auto',
+    'learning_rate': 'adaptive',
+    'learning_rate_init': 0.001,
+    'max_iter': 500,
+    'early_stopping': True,
+    'validation_fraction': 0.1,
+    'tol': 0.0001,
     'random_state': RANDOM_STATE,
     'verbose': False
 }
+
+# ============= ПАРАМЕТРЫ ОПТИМИЗАЦИИ (ГЕНЕТИЧЕСКИЙ АЛГОРИТМ) =============
+OPTIMIZATION_TOP_FEATURES = 8      # Количество наиболее важных признаков для оптимизации
+OPTIMIZATION_POP_SIZE = 80         # Размер популяции
+OPTIMIZATION_GENERATIONS = 300     # Количество поколений
+OPTIMIZATION_MUTATION_RATE = 0.1   # Вероятность мутации
+OPTIMIZATION_CROSSOVER_RATE = 0.7  # Вероятность скрещивания
+OPTIMIZATION_ELITISM = 2           # Количество лучших особей, сохраняемых в поколении
 
 # ============= ПАРАМЕТРЫ ВИЗУАЛИЗАЦИИ =============
 FIGURE_DPI = 300
