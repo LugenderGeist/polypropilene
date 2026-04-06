@@ -1,8 +1,7 @@
 import os
 import pandas as pd
 import numpy as np
-from config import (INPUT_FILE, MIN_WINDOW_SIZE, DEFAULT_BOUNDS_PERCENT,
-                    OPTIMIZATION_TOP_FEATURES)
+from config import (INPUT_FILE, MIN_WINDOW_SIZE, DEFAULT_BOUNDS_PERCENT)
 from utils import (load_data, create_plots_folder, setup_columns,
                    save_bounds_config, remove_outliers, save_cleaned_data)
 from visualization import (plot_all_columns, plot_raw_data,
@@ -23,7 +22,10 @@ def main():
     if df is None:
         return
 
-    print(f"\n📊 Всего столбцов в файле: {df.shape[1]}")
+    # Вывод информации о данных
+    print(f"\n📊 Форма данных: {df.shape}")
+    print(f"📊 Всего столбцов: {df.shape[1]}")
+    print(f"📊 Всего строк: {df.shape[0]}")
 
     # Настройка входных и выходных столбцов
     input_columns, output_columns = setup_columns(df)
@@ -41,9 +43,11 @@ def main():
     os.makedirs(raw_data_folder, exist_ok=True)
 
     print("\n1.1. Графики сырых данных")
+    input("Нажмите Enter, чтобы показать графики...")
     plot_raw_data(df, input_columns, output_columns, save_folder=raw_data_folder)
 
     print("\n1.2. Тепловая карта корреляций")
+    input("Нажмите Enter, чтобы построить тепловую карту...")
     plot_correlation_heatmap(df, input_columns, output_columns,
                              save_folder=raw_data_folder,
                              title="Тепловая карта корреляций (исходные данные)")
@@ -67,7 +71,6 @@ def main():
     bounds_config = None
     df_processed = df.copy()
     processed_data_folder = None
-    cleaned_data_saved = False
 
     if mode_choice == '1':
         # ============= ПОЛНЫЙ РЕЖИМ: ОБРАБОТКА ДАННЫХ =============
@@ -105,80 +108,89 @@ def main():
         bounds_config = interactive_bounds_adjustment(df, all_data_columns, input_columns, output_columns,
                                                       processed_data_folder)
 
-        # Удаление выбросов
-        print("\n2.2. Удаление выбросов")
-        remove_choice = input(
-            "Хотите удалить строки с выбросами (точки за пределами границ)? (да/нет): ").strip().lower()
+        # ============= ПРОВЕРКА ВЫБРОСОВ ДЛЯ УДАЛЕНИЯ =============
+        print("\n" + "=" * 80)
+        print("ПРОВЕРКА ВЫБРОСОВ")
+        print("=" * 80)
 
-        if remove_choice in ['да', 'yes', 'y', 'д']:
-            df_cleaned, removed_indices, removal_report = remove_outliers(df, bounds_config, all_data_columns)
+        # Проверяем, есть ли выбросы
+        outlier_info = {}
+        has_outliers = False
 
-            if len(removed_indices) > 0:
-                df_processed = df_cleaned
+        for col in all_data_columns:
+            if col in bounds_config:
+                try:
+                    data = pd.to_numeric(df[col], errors='coerce')
+                    config = bounds_config[col]
+                    outlier_mask = (data < config['lower']) | (data > config['upper'])
+                    outlier_count = outlier_mask.sum()
+                    if outlier_count > 0:
+                        has_outliers = True
+                        outlier_info[col] = {
+                            'count': outlier_count,
+                            'percent': (outlier_count / len(data)) * 100
+                        }
+                except:
+                    pass
 
-                print("\n2.3. Графики очищенных данных")
-                input("Нажмите Enter, чтобы показать графики...")
+        if has_outliers:
+            print("\nОбнаружены выбросы за пределами установленных границ:")
+            for col, info in outlier_info.items():
+                print(f"  📊 {col}: {info['count']} выбросов ({info['percent']:.2f}%)")
 
-                plot_all_columns(df_cleaned, bounds_config, input_columns, output_columns,
-                                 save_folder=processed_data_folder)
+            # Показываем графики с подсвеченными выбросами
+            print("\nПоказываю графики с выделенными выбросами (красные точки)...")
+            plot_all_columns(df, bounds_config, input_columns, output_columns,
+                           save_folder=processed_data_folder)
 
-                print(f"\nУдалено строк: {len(removed_indices)}")
-                print(f"Осталось строк: {len(df_cleaned)}")
+            # Спрашиваем, удалить ли выбросы
+            remove_choice = input("\nОчистить данные (удалить строки с выбросами)? (да/нет): ").strip().lower()
 
-                # ============= ТЕПЛОВАЯ КАРТА ДЛЯ ОЧИЩЕННЫХ ДАННЫХ =============
-                print("\n2.4. Тепловая карта корреляций (очищенные данные)")
-                input("Нажмите Enter, чтобы построить тепловую карту для очищенных данных...")
+            if remove_choice in ['да', 'yes', 'y', 'д']:
+                df_cleaned, removed_indices, removal_report = remove_outliers(df, bounds_config, all_data_columns)
 
-                plot_correlation_heatmap(df_cleaned, input_columns, output_columns,
-                                         save_folder=processed_data_folder,
-                                         title="Тепловая карта корреляций (очищенные данные)")
+                if len(removed_indices) > 0:
+                    df_processed = df_cleaned
 
-                # ============= СОХРАНЕНИЕ ОЧИЩЕННЫХ ДАННЫХ =============
-                print("\n" + "=" * 80)
-                print("СОХРАНЕНИЕ ОЧИЩЕННЫХ ДАННЫХ")
-                print("=" * 80)
+                    print(f"\n✅ Удалено строк: {len(removed_indices)}")
+                    print(f"   Осталось строк: {len(df_cleaned)}")
 
-                # Сохраняем очищенные данные
-                cleaned_path, info_path = save_cleaned_data(df_cleaned, 'ПП.csv', processed_data_folder)
-                cleaned_data_saved = True
+                    # Показываем графики после очистки
+                    print("\nПоказываю графики после удаления выбросов...")
+                    plot_all_columns(df_cleaned, bounds_config, input_columns, output_columns,
+                                   save_folder=processed_data_folder)
 
-                # Сохраняем информацию об удалении
-                with open(info_path, 'w', encoding='utf-8') as f:
-                    f.write("ИНФОРМАЦИЯ ОБ УДАЛЕНИИ ВЫБРОСОВ\n")
-                    f.write("=" * 50 + "\n\n")
-                    f.write(f"Исходное количество строк: {len(df)}\n")
-                    f.write(f"Удалено строк: {len(removed_indices)}\n")
-                    f.write(f"Осталось строк: {len(df_cleaned)}\n\n")
-                    f.write("Удаленные индексы:\n")
-                    f.write(str(removed_indices) + "\n\n")
-                    f.write("Детали по столбцам:\n")
-                    for col, report in removal_report.items():
-                        f.write(f"\n{col}:\n")
-                        f.write(f"  Количество выбросов: {report['outlier_count']}\n")
-                        f.write(f"  Процент выбросов: {report['outlier_percent']:.2f}%\n")
-                        f.write(f"  Индексы выбросов: {report['indices']}\n")
+                    # Тепловая карта для очищенных данных
+                    print("\nСтрою тепловую карту для очищенных данных...")
+                    plot_correlation_heatmap(df_cleaned, input_columns, output_columns,
+                                           save_folder=processed_data_folder,
+                                           title="Тепловая карта корреляций (очищенные данные)")
 
-                print(f"📁 Очищенные данные сохранены в: {cleaned_path}")
-                print(f"📄 Информация об удалении сохранена в: {info_path}")
+                    # Сохраняем очищенные данные
+                    cleaned_path, info_path = save_cleaned_data(df_cleaned, 'ПП.csv', processed_data_folder)
 
+                    # Сохраняем информацию об удалении
+                    with open(info_path, 'w', encoding='utf-8') as f:
+                        f.write("ИНФОРМАЦИЯ ОБ УДАЛЕНИИ ВЫБРОСОВ\n")
+                        f.write("=" * 50 + "\n\n")
+                        f.write(f"Исходное количество строк: {len(df)}\n")
+                        f.write(f"Удалено строк: {len(removed_indices)}\n")
+                        f.write(f"Осталось строк: {len(df_cleaned)}\n\n")
+                        f.write("Удаленные индексы:\n")
+                        f.write(str(removed_indices) + "\n\n")
+                        f.write("Детали по столбцам:\n")
+                        for col, report in removal_report.items():
+                            f.write(f"\n{col}:\n")
+                            f.write(f"  Количество выбросов: {report['outlier_count']}\n")
+                            f.write(f"  Процент выбросов: {report['outlier_percent']:.2f}%\n")
+
+                    print(f"\n📁 Очищенные данные сохранены в: {cleaned_path}")
+                else:
+                    print("\nВыбросов не обнаружено.")
             else:
-                print("\nВыбросов не обнаружено. Очистка не требуется.")
-                save_current = input(
-                    "\nСохранить текущие данные (с настроенными границами) в CSV? (да/нет): ").strip().lower()
-                if save_current in ['да', 'yes', 'y', 'д']:
-                    current_path = os.path.join(processed_data_folder, 'data_with_bounds.csv')
-                    df.to_csv(current_path, index=False, encoding='utf-8-sig')
-                    print(f"📁 Данные сохранены в: {current_path}")
-                    cleaned_data_saved = True
+                print("\nОчистка данных пропущена.")
         else:
-            # Пользователь не захотел удалять выбросы
-            save_current = input(
-                "\nСохранить текущие данные (с настроенными границами) в CSV? (да/нет): ").strip().lower()
-            if save_current in ['да', 'yes', 'y', 'д']:
-                current_path = os.path.join(processed_data_folder, 'data_with_bounds.csv')
-                df.to_csv(current_path, index=False, encoding='utf-8-sig')
-                print(f"📁 Данные сохранены в: {current_path}")
-                cleaned_data_saved = True
+            print("\n✅ Выбросов за пределами границ не обнаружено.")
 
         # Сохраняем конфигурацию границ
         if bounds_config:
@@ -187,7 +199,7 @@ def main():
                 config_file = save_bounds_config(bounds_config, processed_data_folder)
                 print(f"Конфигурация сохранена в файл: {config_file}")
 
-        print(f"\n✅ Все графики обработанных данных сохранены в: {processed_data_folder}")
+        print(f"\n✅ Обработка данных завершена. Результаты сохранены в: {processed_data_folder}")
 
     elif mode_choice == '2':
         # ============= БЫСТРЫЙ РЕЖИМ: ПРОПУСК ОБРАБОТКИ =============
@@ -196,15 +208,6 @@ def main():
         print("=" * 80)
         print("Вы пропустили этапы настройки границ и фильтрации выбросов.")
         print("Данные будут использованы в исходном виде.")
-
-        print("\nСохранить исходные данные в отдельный файл?")
-        save_original = input("(да/нет): ").strip().lower()
-        if save_original in ['да', 'yes', 'y', 'д']:
-            quick_folder = os.path.join(main_plots_folder, 'quick_mode_data')
-            os.makedirs(quick_folder, exist_ok=True)
-            quick_path = os.path.join(quick_folder, 'original_data.csv')
-            df.to_csv(quick_path, index=False, encoding='utf-8-sig')
-            print(f"📁 Исходные данные сохранены в: {quick_path}")
 
         df_processed = df.copy()
 
@@ -227,7 +230,7 @@ def main():
         print("\n✅ Переход к поиску лучшего окна и построению модели...")
 
     else:
-        print("Неверный выбор. Используется полный режим по умолчанию.")
+        print("Неверный выбор. Используется быстрый режим.")
         df_processed = df.copy()
         bounds_config = {}
         for col in all_data_columns:
@@ -270,6 +273,11 @@ def main():
             start = best_window['start_row']
             end = best_window['end_row']
 
+            print(f"\n✅ Найдено лучшее окно:")
+            print(f"   Строки: {start} - {end}")
+            print(f"   Размер: {best_window['window_size']} строк")
+            print(f"   Средняя корреляция: {best_window['mean_correlation']:.4f}")
+
             # Сохраняем данные и графики окна
             save_best_window_data(df_processed, best_window, input_columns, output_columns, best_window_folder)
 
@@ -279,7 +287,7 @@ def main():
             plot_window_raw_data(df_processed, best_window, input_columns, output_columns,
                                  save_folder=best_window_folder)
 
-            print(f"\n✅ Все данные и графики лучшего окна сохранены в: {best_window_folder}")
+            print(f"\n📁 Данные лучшего окна сохранены в: {best_window_folder}")
         else:
             print("\n❌ Не удалось найти подходящее окно. Возможно, недостаточно данных.")
     else:
@@ -362,9 +370,9 @@ def main():
         print("\nДоступные модели:")
         for i, name in enumerate(results_dict.keys(), 1):
             print(f"  {i}. {name} (R² = {results_dict[name]['r2_test']:.4f})")
-        print(f"  {len(results_dict) + 1}. Использовать лучшую ({best_model_name})")
+        print(f"  {len(results_dict)+1}. Использовать лучшую ({best_model_name})")
 
-        opt_choice = input(f"\nВыберите модель для оптимизации (1-{len(results_dict) + 1}): ").strip()
+        opt_choice = input(f"\nВыберите модель для оптимизации (1-{len(results_dict)+1}): ").strip()
 
         try:
             opt_idx = int(opt_choice) - 1
@@ -389,8 +397,7 @@ def main():
         use_all_features = feat_choice == '2'
 
         # Запуск оптимизации
-        optimize_choice = input(
-            f"\nПровести оптимизацию для максимизации {output_columns[0]}? (да/нет): ").strip().lower()
+        optimize_choice = input(f"\nПровести оптимизацию для максимизации {output_columns[0]}? (да/нет): ").strip().lower()
 
         if optimize_choice in ['да', 'yes', 'y', 'д']:
             try:
@@ -401,6 +408,12 @@ def main():
                 os.makedirs(optimization_folder, exist_ok=True)
 
                 n_features = None if use_all_features else OPTIMIZATION_TOP_FEATURES
+
+                print(f"\n📊 Параметры оптимизации:")
+                if use_all_features:
+                    print(f"   - Оптимизируемые признаки: все ({len(input_columns)} шт.)")
+                else:
+                    print(f"   - Оптимизируемые признаки: топ-{OPTIMIZATION_TOP_FEATURES} важных")
 
                 opt_result = run_optimization(
                     df_original=data_for_model,
@@ -413,11 +426,30 @@ def main():
 
                 if opt_result:
                     print(f"\n✅ Оптимизация завершена!")
-                    print(f"   Лучшее значение: {opt_result['best_fitness']:.4f}")
+                    print(f"   Лучшее значение {output_columns[0]}: {opt_result['best_fitness']:.4f}")
+                    print(f"   Результаты сохранены в: {optimization_folder}")
 
             except Exception as e:
                 print(f"Ошибка при оптимизации: {e}")
     else:
         print("\n❌ Не удалось обучить ни одну модель!")
+
+    # ============= ИТОГОВАЯ ИНФОРМАЦИЯ =============
+    print("\n" + "=" * 60)
+    print("ИТОГОВАЯ СТРУКТУРА СОХРАНЕННЫХ ДАННЫХ")
+    print("=" * 60)
+    print(f"\nОсновная папка: {main_plots_folder}")
+    print(f"  ├── 01_raw_data/              # Исходные данные")
+    if processed_data_folder:
+        print(f"  ├── 02_processed_data/        # Обработанные данные")
+    if best_window_folder:
+        print(f"  ├── 03_best_window/           # Лучшее окно")
+    print(f"  └── 04_modeling_results/       # Результаты моделирования")
+
+    print("\n" + "=" * 60)
+    print("ГОТОВО!")
+    print("=" * 60)
+
+
 if __name__ == "__main__":
     main()

@@ -1,6 +1,5 @@
 """
 Файл конфигурации проекта
-Здесь собраны все настраиваемые параметры
 """
 
 # ============= ПУТИ К ФАЙЛАМ =============
@@ -18,6 +17,7 @@ MIN_WINDOW_SIZE = 2000
 # ============= ПАРАМЕТРЫ МОДЕЛЕЙ =============
 TEST_SIZE = 0.2
 RANDOM_STATE = 42
+TOP_FEATURES_TO_SHOW = 10  # Количество важных признаков для вывода в терминал
 
 # Random Forest параметры
 RF_PARAMS = {
@@ -28,7 +28,8 @@ RF_PARAMS = {
     'max_features': 'sqrt',
     'bootstrap': True,
     'oob_score': True,
-    'n_jobs': 1
+    'n_jobs': -1,
+    'random_state': 42
 }
 
 # XGBoost параметры
@@ -41,7 +42,8 @@ XGB_PARAMS = {
     'min_child_weight': 3,
     'reg_alpha': 0.1,
     'reg_lambda': 1.0,
-    'n_jobs': 1,
+    'n_jobs': -1,
+    'random_state': 42,
     'verbosity': 0
 }
 
@@ -58,30 +60,26 @@ MLP_PARAMS = {
     'early_stopping': True,
     'validation_fraction': 0.1,
     'tol': 0.0001,
-    'random_state': RANDOM_STATE,
+    'random_state': 42,
     'verbose': False
 }
 
-# ============= ПАРАМЕТРЫ ОПТИМИЗАЦИИ (ГЕНЕТИЧЕСКИЙ АЛГОРИТМ) =============
-OPTIMIZATION_TOP_FEATURES = 8      # Количество наиболее важных признаков для оптимизации
-OPTIMIZATION_POP_SIZE = 80         # Размер популяции
-OPTIMIZATION_GENERATIONS = 300     # Количество поколений
-OPTIMIZATION_MUTATION_RATE = 0.1   # Вероятность мутации
-OPTIMIZATION_CROSSOVER_RATE = 0.7  # Вероятность скрещивания
-OPTIMIZATION_ELITISM = 2           # Количество лучших особей, сохраняемых в поколении
+# ============= ПАРАМЕТРЫ ОПТИМИЗАЦИИ =============
+OPTIMIZATION_TOP_FEATURES = 8      # Количество важных признаков (если не выбраны все)
+OPTIMIZATION_POP_SIZE = 50
+OPTIMIZATION_GENERATIONS = 100
+OPTIMIZATION_MUTATION_RATE = 0.1
+OPTIMIZATION_CROSSOVER_RATE = 0.7
+OPTIMIZATION_ELITISM = 2
 
 # ============= ПАРАМЕТРЫ ВИЗУАЛИЗАЦИИ =============
 FIGURE_DPI = 300
-PLOT_SIZE = (15, 4)
 
 # ============= ПАРАМЕТРЫ ФИЛЬТРАЦИИ =============
 IQR_MULTIPLIER = 1.5
 MAD_THRESHOLD = 3.5
-ROLLING_WINDOW = 10
-ROLLING_THRESHOLD = 3
 DERIVATIVE_MULTIPLIER = 5
 PEAK_PROMINENCE = 0.5
 PEAK_DISTANCE = 10
 SAVGOL_WINDOW = 21
 SAVGOL_POLYORDER = 3
-ISOLATION_FOREST_CONTAMINATION = 0.1
