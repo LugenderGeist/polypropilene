@@ -6,6 +6,8 @@ from outlier_filter import apply_outlier_filter, visualize_outlier_filter
 
 
 def interactive_bounds_adjustment(df, all_columns, input_columns, output_columns, save_folder):
+    """Интерактивное изменение границ для каждого столбца"""
+
     # Инициализация конфигурации границ
     bounds_config = {}
     for col in all_columns:
@@ -32,12 +34,6 @@ def interactive_bounds_adjustment(df, all_columns, input_columns, output_columns
     if not os.path.exists(filter_folder):
         os.makedirs(filter_folder)
 
-    # Убираем этот блок - он дублирует графики из main.py
-    # print("\n" + "=" * 80)
-    # print("НАЧАЛЬНЫЕ ГРАФИКИ С ГРАНИЦАМИ ±50% ОТ СРЕДНЕГО")
-    # print("=" * 80)
-    # plot_all_columns(df, bounds_config, input_columns, output_columns, adjusted_folder)
-
     # Интерактивный цикл изменения границ
     while True:
         print("\n" + "=" * 80)
@@ -54,7 +50,9 @@ def interactive_bounds_adjustment(df, all_columns, input_columns, output_columns
                       f"Верхняя: {config['upper']:.4f}, "
                       f"Среднее: {config['mean']:.4f}")
 
-        print(f"\n0. Завершить настройку и показать финальные графики")
+        # Выводим пункт "Показать все графики" перед завершением
+        print(f"\n{len(all_columns) + 1}. Показать все графики с текущими настройками")
+        print(f"0. Завершить настройку и показать финальные графики")
 
         # Выбор столбца
         try:
@@ -63,6 +61,13 @@ def interactive_bounds_adjustment(df, all_columns, input_columns, output_columns
                 break
 
             idx = int(choice) - 1
+
+            # Проверяем, не выбран ли пункт "Показать все графики"
+            if idx == len(all_columns):
+                print("\nПоказываю все графики с текущими границами...")
+                plot_all_columns(df, bounds_config, input_columns, output_columns, adjusted_folder)
+                continue
+
             if 0 <= idx < len(all_columns):
                 col = all_columns[idx]
                 if col not in bounds_config:
@@ -81,11 +86,10 @@ def interactive_bounds_adjustment(df, all_columns, input_columns, output_columns
                 print("1. Изменить нижнюю границу")
                 print("2. Изменить верхнюю границу")
                 print("3. Показать график этого столбца")
-                print("4. Показать все графики с текущими настройками")
-                print("5. Применить автоматический фильтр выбросов")
-                print("6. Вернуться к выбору столбца")
+                print("4. Применить автоматический фильтр выбросов")
+                print("5. Вернуться к выбору столбца")
 
-                action = input("Ваш выбор (1-6): ").strip()
+                action = input("Ваш выбор (1-5): ").strip()
 
                 if action == '1':
                     try:
@@ -123,11 +127,6 @@ def interactive_bounds_adjustment(df, all_columns, input_columns, output_columns
                                        config['lower'], config['upper'], config['mean'])
 
                 elif action == '4':
-                    # Показываем все графики с текущими настройками
-                    print("\nПоказываю все графики с текущими границами...")
-                    plot_all_columns(df, bounds_config, input_columns, output_columns, adjusted_folder)
-
-                elif action == '5':
                     # Применяем автоматический фильтр выбросов
                     print("\n" + "=" * 60)
                     print(f"АВТОМАТИЧЕСКАЯ ФИЛЬТРАЦИЯ ДЛЯ {col}")
@@ -135,13 +134,11 @@ def interactive_bounds_adjustment(df, all_columns, input_columns, output_columns
                     print("\nДоступные методы фильтрации:")
                     print("1. IQR (межквартильный размах) - для стационарных данных")
                     print("2. MAD (медианное абсолютное отклонение) - устойчив к выбросам")
-                    print("3. Скользящее окно - для временных рядов (ловит локальные выбросы)")
-                    print("4. Производная - для поиска резких скачков")
-                    print("5. Поиск пиков - для изолированных пиков")
-                    print("6. Фильтр Савицкого-Голая - сглаживание и поиск отклонений")
-                    print("7. Isolation Forest - машинное обучение (экспериментально)")
+                    print("3. Производная - для поиска резких скачков")
+                    print("4. Поиск пиков - для изолированных пиков")
+                    print("5. Фильтр Савицкого-Голая - сглаживание и поиск отклонений")
 
-                    method_choice = input("\nВыберите метод (1-7): ").strip()
+                    method_choice = input("\nВыберите метод (1-5): ").strip()
 
                     try:
                         if method_choice == '1':
@@ -155,34 +152,23 @@ def interactive_bounds_adjustment(df, all_columns, input_columns, output_columns
                                 df, col, method='mad', threshold=threshold
                             )
                         elif method_choice == '3':
-                            window_size = int(input("Размер окна (10-50, по умолч. 10): ") or "10")
-                            threshold = float(input("Порог (2-4, по умолч. 3): ") or "3")
-                            filtered_data, outlier_mask, bounds, stats = apply_outlier_filter(
-                                df, col, method='rolling', window_size=window_size, threshold=threshold
-                            )
-                        elif method_choice == '4':
                             threshold_multiplier = float(input("Множитель порога (3-7, по умолч. 5): ") or "5")
                             filtered_data, outlier_mask, bounds, stats = apply_outlier_filter(
                                 df, col, method='derivative', threshold_multiplier=threshold_multiplier
                             )
-                        elif method_choice == '5':
+                        elif method_choice == '4':
                             prominence = float(input("Prominence (0.3-1, по умолч. 0.5): ") or "0.5")
                             distance = int(input("Мин. расстояние между пиками (5-20, по умолч. 10): ") or "10")
                             filtered_data, outlier_mask, bounds, stats = apply_outlier_filter(
                                 df, col, method='peak', prominence=prominence, distance=distance
                             )
-                        elif method_choice == '6':
+                        elif method_choice == '5':
                             window_length = int(input("Длина окна (нечетное, 11-31, по умолч. 21): ") or "21")
                             polyorder = int(input("Порядок полинома (2-5, по умолч. 3): ") or "3")
                             threshold = float(input("Порог (2-4, по умолч. 3): ") or "3")
                             filtered_data, outlier_mask, bounds, stats = apply_outlier_filter(
                                 df, col, method='savgol', window_length=window_length,
                                 polyorder=polyorder, threshold=threshold
-                            )
-                        elif method_choice == '7':
-                            contamination = float(input("Доля выбросов (0.05-0.2, по умолч. 0.1): ") or "0.1")
-                            filtered_data, outlier_mask, bounds, stats = apply_outlier_filter(
-                                df, col, method='isolation_forest', contamination=contamination
                             )
                         else:
                             print("Неверный выбор метода")
@@ -231,7 +217,7 @@ def interactive_bounds_adjustment(df, all_columns, input_columns, output_columns
                     except Exception as e:
                         print(f"Ошибка при применении фильтра: {e}")
 
-                elif action == '6':
+                elif action == '5':
                     continue
 
                 else:

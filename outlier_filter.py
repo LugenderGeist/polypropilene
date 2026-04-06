@@ -5,6 +5,7 @@ import os
 from scipy import stats
 from scipy.signal import savgol_filter, find_peaks
 
+
 def detect_outliers_iqr(data, multiplier=1.5):
     """Метод межквартильного размаха (IQR)"""
     q1 = np.percentile(data, 25)
@@ -25,16 +26,6 @@ def detect_outliers_mad(data, threshold=3.5):
     lower_bound = median - threshold * mad / 0.6745
     upper_bound = median + threshold * mad / 0.6745
     return outlier_mask, lower_bound, upper_bound
-
-
-def detect_outliers_rolling(data, window_size=10, threshold=3):
-    """Метод скользящего окна - для временных рядов"""
-    rolling_mean = pd.Series(data).rolling(window=window_size, center=True, min_periods=1).mean().values
-    rolling_std = pd.Series(data).rolling(window=window_size, center=True, min_periods=1).std().values
-    rolling_std[rolling_std == 0] = 1e-10
-    z_scores = np.abs((data - rolling_mean) / rolling_std)
-    outlier_mask = z_scores > threshold
-    return outlier_mask, None, None
 
 
 def detect_outliers_derivative(data, threshold_multiplier=5):
@@ -71,35 +62,6 @@ def detect_outliers_savgol(data, window_length=21, polyorder=3, threshold=3):
         return np.zeros(len(data), dtype=bool), None, None
 
 
-def detect_outliers_isolation_forest(df, column, contamination=0.1):
-    """Метод Isolation Forest - машинное обучение для обнаружения аномалий"""
-    try:
-        from sklearn.ensemble import IsolationForest
-
-        data = df[column].values.reshape(-1, 1)
-        # Удаляем NaN для обучения
-        mask_valid = ~np.isnan(data).flatten()
-        data_valid = data[mask_valid]
-
-        if len(data_valid) < 10:
-            return np.zeros(len(data), dtype=bool), None, None
-
-        iso_forest = IsolationForest(contamination=contamination, random_state=42)
-        predictions = iso_forest.fit_predict(data_valid)
-
-        # Создаем маску для всех данных
-        outlier_mask = np.zeros(len(data), dtype=bool)
-        outlier_mask[mask_valid] = (predictions == -1)
-
-        return outlier_mask, None, None
-    except ImportError:
-        print("Isolation Forest требует scikit-learn. Установите: pip install scikit-learn")
-        return np.zeros(len(data), dtype=bool), None, None
-    except Exception as e:
-        print(f"Ошибка в Isolation Forest: {e}")
-        return np.zeros(len(data), dtype=bool), None, None
-
-
 def apply_outlier_filter(df, column, method='iqr', **kwargs):
     """
     Применение фильтра выбросов к столбцу
@@ -110,11 +72,9 @@ def apply_outlier_filter(df, column, method='iqr', **kwargs):
     - method: метод фильтрации
         'iqr' - межквартильный размах
         'mad' - медианное абсолютное отклонение
-        'rolling' - скользящее окно
         'derivative' - производная (резкие скачки)
         'peak' - поиск пиков
         'savgol' - фильтр Савицкого-Голая
-        'isolation_forest' - Isolation Forest (ML)
     """
     data = pd.to_numeric(df[column], errors='coerce')
     original_count = len(data)
@@ -132,13 +92,6 @@ def apply_outlier_filter(df, column, method='iqr', **kwargs):
         outlier_mask, lower_bound, upper_bound = detect_outliers_mad(data, threshold)
         bounds = [lower_bound, upper_bound]
         method_name = f"MAD (порог={threshold})"
-
-    elif method == 'rolling':
-        window_size = kwargs.get('window_size', 10)
-        threshold = kwargs.get('threshold', 3)
-        outlier_mask, _, _ = detect_outliers_rolling(data, window_size, threshold)
-        bounds = None
-        method_name = f"Скользящее окно (окно={window_size}, порог={threshold}σ)"
 
     elif method == 'derivative':
         threshold_multiplier = kwargs.get('threshold_multiplier', 5)
@@ -161,12 +114,6 @@ def apply_outlier_filter(df, column, method='iqr', **kwargs):
         bounds = None
         method_name = f"Фильтр Савицкого-Голая (окно={window_length}, порог={threshold}σ)"
 
-    elif method == 'isolation_forest':
-        contamination = kwargs.get('contamination', 0.1)
-        outlier_mask, _, _ = detect_outliers_isolation_forest(df, column, contamination)
-        bounds = None
-        method_name = f"Isolation Forest (contamination={contamination})"
-
     else:
         raise ValueError(f"Неизвестный метод: {method}")
 
@@ -177,7 +124,7 @@ def apply_outlier_filter(df, column, method='iqr', **kwargs):
     outlier_count = outlier_mask.sum()
     outlier_percent = (outlier_count / original_count) * 100
 
-    statis = {
+    stats = {
         'original_count': original_count,
         'outlier_count': outlier_count,
         'outlier_percent': outlier_percent,
@@ -189,10 +136,10 @@ def apply_outlier_filter(df, column, method='iqr', **kwargs):
         'method': method_name
     }
 
-    return filtered_data, outlier_mask, bounds, statis
+    return filtered_data, outlier_mask, bounds, stats
 
 
-def visualize_outlier_filter(df, column, filtered_data, outlier_mask, bounds, statis, save_folder=None):
+def visualize_outlier_filter(df, column, filtered_data, outlier_mask, bounds, stats, save_folder=None):
     """
     Визуализация результата фильтрации выбросов
     """
@@ -206,7 +153,7 @@ def visualize_outlier_filter(df, column, filtered_data, outlier_mask, bounds, st
 
     if outlier_mask.sum() > 0:
         ax1.scatter(df.index[outlier_mask], data[outlier_mask],
-                    color='red', s=50, label=f'Выбросы ({statis["outlier_count"]})', zorder=5)
+                    color='red', s=50, label=f'Выбросы ({stats["outlier_count"]})', zorder=5)
 
     if bounds:
         ax1.axhline(y=bounds[0], color='orange', linestyle='--', alpha=0.7, label=f'Нижняя граница = {bounds[0]:.4f}')
@@ -254,20 +201,20 @@ def visualize_outlier_filter(df, column, filtered_data, outlier_mask, bounds, st
     СТАТИСТИКА ФИЛЬТРАЦИИ
     {'=' * 40}
 
-    Метод: {statis['method']}
+    Метод: {stats['method']}
 
     Исходные данные:
-      Количество: {statis['original_count']}
-      Среднее: {statis['original_mean']:.4f}
-      Стд: {statis['original_std']:.4f}
+      Количество: {stats['original_count']}
+      Среднее: {stats['original_mean']:.4f}
+      Стд: {stats['original_std']:.4f}
 
     Обнаружено выбросов:
-      Количество: {statis['outlier_count']}
-      Процент: {statis['outlier_percent']:.2f}%
+      Количество: {stats['outlier_count']}
+      Процент: {stats['outlier_percent']:.2f}%
 
     После фильтрации:
-      Среднее: {statis['filtered_mean']:.4f}
-      Стд: {statis['filtered_std']:.4f}
+      Среднее: {stats['filtered_mean']:.4f}
+      Стд: {stats['filtered_std']:.4f}
     """
 
     if bounds:

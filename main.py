@@ -1,5 +1,6 @@
 import os
 import pandas as pd
+import numpy as np
 from config import (INPUT_FILE, MIN_WINDOW_SIZE, DEFAULT_BOUNDS_PERCENT,
                     OPTIMIZATION_TOP_FEATURES)
 from utils import (load_data, create_plots_folder, setup_columns,
@@ -284,198 +285,129 @@ def main():
     else:
         print("\nПоиск лучшего окна пропущен.")
 
-    # ============= 4. ПОСТРОЕНИЕ МОДЕЛИ =============
+    # ============= 4. ПОСТРОЕНИЕ МОДЕЛЕЙ И ОПТИМИЗАЦИЯ =============
     modeling_folder = os.path.join(main_plots_folder, '04_modeling_results')
     os.makedirs(modeling_folder, exist_ok=True)
 
-    while True:
-        print("\n" + "=" * 80)
-        print("4. ПОСТРОЕНИЕ МОДЕЛИ")
-        print("=" * 80)
-
-        # Выбор данных для моделирования
-        if best_window is not None:
-            use_window = input(
-                f"\nИспользовать лучшее окно (строки {best_window['start_row']}-{best_window['end_row']}) для моделирования? (да/нет): ").strip().lower()
-            if use_window in ['да', 'yes', 'y', 'д']:
-                data_for_model = best_window_data
-                print(f"\n✅ Модель будет построена на данных лучшего окна ({len(data_for_model)} строк)")
-            else:
-                data_for_model = df_processed
-                print(f"\n✅ Модель будет построена на всех данных ({len(data_for_model)} строк)")
+    # Выбор данных для моделирования
+    if best_window is not None:
+        use_window = input(
+            f"\nИспользовать лучшее окно (строки {best_window['start_row']}-{best_window['end_row']}) для моделирования? (да/нет): ").strip().lower()
+        if use_window in ['да', 'yes', 'y', 'д']:
+            data_for_model = best_window_data
+            print(f"\n✅ Модели будут построены на данных лучшего окна ({len(data_for_model)} строк)")
         else:
             data_for_model = df_processed
-            print(f"\n✅ Модель будет построена на всех данных ({len(data_for_model)} строк)")
+            print(f"\n✅ Модели будут построены на всех данных ({len(data_for_model)} строк)")
+    else:
+        data_for_model = df_processed
+        print(f"\n✅ Модели будут построены на всех данных ({len(data_for_model)} строк)")
 
-        print("\nВыберите модель для обучения:")
-        print("1. 🌲 Random Forest")
-        print("2. 🚀 XGBoost")
-        print("3. 🧠 Нейросеть (MLP)")
-        print("4. ❌ Завершить работу")
+    print("\n" + "=" * 80)
+    print("ОБУЧЕНИЕ МОДЕЛЕЙ")
+    print("=" * 80)
 
-        model_choice = input("\nВаш выбор (1/2/3/4): ").strip()
+    results_dict = {}
+    models_dict = {}
 
-        # ============= RANDOM FOREST =============
-        if model_choice == '1':
-            try:
-                from modeling import build_random_forest_model
+    # 1. Random Forest
+    try:
+        from modeling import build_random_forest_model
+        results, model, _ = build_random_forest_model(
+            data_for_model, input_columns, output_columns,
+            save_folder=modeling_folder
+        )
+        if results:
+            results_dict['Random Forest'] = results
+            models_dict['Random Forest'] = model
+    except Exception as e:
+        print(f"❌ Ошибка Random Forest: {e}")
 
-                print("\n" + "=" * 80)
-                print("🌲 ПОСТРОЕНИЕ МОДЕЛИ RANDOM FOREST")
-                print("=" * 80)
+    # 2. XGBoost
+    try:
+        from modeling import build_xgboost_model
+        results, model, _ = build_xgboost_model(
+            data_for_model, input_columns, output_columns,
+            save_folder=modeling_folder
+        )
+        if results:
+            results_dict['XGBoost'] = results
+            models_dict['XGBoost'] = model
+    except Exception as e:
+        print(f"❌ Ошибка XGBoost: {e}")
 
-                results, model, importance = build_random_forest_model(
-                    data_for_model, input_columns, output_columns,
-                    save_folder=modeling_folder
-                )
+    # 3. Нейросеть
+    try:
+        from modeling import build_mlp_model
+        results, model, _ = build_mlp_model(
+            data_for_model, input_columns, output_columns,
+            save_folder=modeling_folder
+        )
+        if results:
+            results_dict['MLP'] = results
+            models_dict['MLP'] = model
+    except Exception as e:
+        print(f"❌ Ошибка нейросети: {e}")
 
-                if results:
-                    print("\n" + "=" * 80)
-                    print("📊 РЕЗУЛЬТАТЫ RANDOM FOREST")
-                    print("=" * 80)
-                    print(f"\n🎯 Целевая переменная: {results['target']}")
-                    print(f"📊 R² на обучающей выборке: {results['r2_train']:.4f}")
-                    print(f"📊 R² на тестовой выборке: {results['r2_test']:.4f}")
-                    print(f"📉 RMSE на тестовой выборке: {results['rmse_test']:.4f}")
-                    print(f"📊 MAE на тестовой выборке: {results['mae_test']:.4f}")
+    # Сравнение моделей
+    if results_dict:
+        from modeling import compare_models
+        best_model_name, best_r2 = compare_models(results_dict, save_folder=modeling_folder)
 
-                    overfitting_gap = results['r2_train'] - results['r2_test']
-                    if overfitting_gap > 0.1:
-                        print(f"⚠️ Внимание: разница R² = {overfitting_gap:.4f} (возможно переобучение)")
-                    elif overfitting_gap > 0.05:
-                        print(f"⚠️ Небольшое переобучение: разница R² = {overfitting_gap:.4f}")
-                    else:
-                        print(f"✅ Переобучение не обнаружено (разница R² = {overfitting_gap:.4f})")
+        # Выбор модели для оптимизации
+        print("\n" + "=" * 80)
+        print("ОПТИМИЗАЦИЯ")
+        print("=" * 80)
 
-                    print(f"\n📁 Полные результаты сохранены в: {modeling_folder}")
-                    print(f"   - random_forest_report.txt")
-                    print(f"   - random_forest_r2_comparison.png")
-                    print(f"   - random_forest_metrics_comparison.png")
-                    print(f"   - random_forest_feature_importance.png")
-                    print(f"   - random_forest_predictions_vs_actual.png")
-                    print(f"   - random_forest_feature_importance.csv")
+        print("\nДоступные модели:")
+        for i, name in enumerate(results_dict.keys(), 1):
+            print(f"  {i}. {name} (R² = {results_dict[name]['r2_test']:.4f})")
+        print(f"  {len(results_dict) + 1}. Использовать лучшую ({best_model_name})")
 
-            except ImportError as e:
-                print(f"Ошибка импорта: {e}")
-            except Exception as e:
-                print(f"Ошибка при построении модели: {e}")
+        opt_choice = input(f"\nВыберите модель для оптимизации (1-{len(results_dict) + 1}): ").strip()
 
-        # ============= XGBOOST =============
-        elif model_choice == '2':
-            try:
-                from modeling import build_xgboost_model
+        try:
+            opt_idx = int(opt_choice) - 1
+            if opt_idx == len(results_dict):
+                selected_model_name = best_model_name
+            elif 0 <= opt_idx < len(results_dict):
+                selected_model_name = list(results_dict.keys())[opt_idx]
+            else:
+                selected_model_name = best_model_name
+        except:
+            selected_model_name = best_model_name
 
-                print("\n" + "=" * 80)
-                print("🚀 ПОСТРОЕНИЕ МОДЕЛИ XGBOOST")
-                print("=" * 80)
+        selected_model = models_dict[selected_model_name]
+        print(f"\n✅ Для оптимизации выбрана: {selected_model_name}")
 
-                results, model, importance = build_xgboost_model(
-                    data_for_model, input_columns, output_columns,
-                    save_folder=modeling_folder
-                )
+        # Выбор признаков для оптимизации
+        print("\nВыберите признаки для оптимизации:")
+        print("  1. Только наиболее важные (из config.py)")
+        print("  2. Все входные параметры")
 
-                if results:
-                    print("\n" + "=" * 80)
-                    print("📊 РЕЗУЛЬТАТЫ XGBOOST")
-                    print("=" * 80)
-                    print(f"\n🎯 Целевая переменная: {results['target']}")
-                    print(f"📊 R² на обучающей выборке: {results['r2_train']:.4f}")
-                    print(f"📊 R² на тестовой выборке: {results['r2_test']:.4f}")
-                    print(f"📉 RMSE на тестовой выборке: {results['rmse_test']:.4f}")
-                    print(f"📊 MAE на тестовой выборке: {results['mae_test']:.4f}")
+        feat_choice = input("Ваш выбор (1/2): ").strip()
+        use_all_features = feat_choice == '2'
 
-                    overfitting_gap = results['r2_train'] - results['r2_test']
-                    if overfitting_gap > 0.1:
-                        print(f"⚠️ Внимание: разница R² = {overfitting_gap:.4f} (возможно переобучение)")
-                    elif overfitting_gap > 0.05:
-                        print(f"⚠️ Небольшое переобучение: разница R² = {overfitting_gap:.4f}")
-                    else:
-                        print(f"✅ Переобучение не обнаружено (разница R² = {overfitting_gap:.4f})")
-
-                    print(f"\n📁 Полные результаты сохранены в: {modeling_folder}")
-                    print(f"   - xgboost_report.txt")
-                    print(f"   - xgboost_r2_comparison.png")
-                    print(f"   - xgboost_metrics_comparison.png")
-                    print(f"   - xgboost_feature_importance.png")
-                    print(f"   - xgboost_predictions_vs_actual.png")
-                    print(f"   - xgboost_feature_importance.csv")
-
-            except ImportError as e:
-                print(f"Ошибка импорта: {e}")
-                print("Для XGBoost выполните: pip install xgboost")
-            except Exception as e:
-                print(f"Ошибка при построении модели: {e}")
-
-        # ============= НЕЙРОСЕТЬ (MLP) =============
-        elif model_choice == '3':
-            try:
-                from modeling import build_mlp_model
-
-                print("\n" + "=" * 80)
-                print("🧠 ПОСТРОЕНИЕ НЕЙРОСЕТИ (MLP)")
-                print("=" * 80)
-
-                results, model, importance = build_mlp_model(
-                    data_for_model, input_columns, output_columns,
-                    save_folder=modeling_folder
-                )
-
-                if results:
-                    print("\n" + "=" * 80)
-                    print("📊 РЕЗУЛЬТАТЫ НЕЙРОСЕТИ (MLP)")
-                    print("=" * 80)
-                    print(f"\n🎯 Целевая переменная: {results['target']}")
-                    print(f"📊 R² на обучающей выборке: {results['r2_train']:.4f}")
-                    print(f"📊 R² на тестовой выборке: {results['r2_test']:.4f}")
-                    print(f"📉 RMSE на тестовой выборке: {results['rmse_test']:.4f}")
-                    print(f"📊 MAE на тестовой выборке: {results['mae_test']:.4f}")
-
-                    overfitting_gap = results['r2_train'] - results['r2_test']
-                    if overfitting_gap > 0.1:
-                        print(f"⚠️ Внимание: разница R² = {overfitting_gap:.4f} (возможно переобучение)")
-                    elif overfitting_gap > 0.05:
-                        print(f"⚠️ Небольшое переобучение: разница R² = {overfitting_gap:.4f}")
-                    else:
-                        print(f"✅ Переобучение не обнаружено (разница R² = {overfitting_gap:.4f})")
-
-                    print(f"\n📁 Полные результаты сохранены в: {modeling_folder}")
-                    print(f"   - mlp_report.txt")
-                    print(f"   - mlp_r2_comparison.png")
-                    print(f"   - mlp_metrics_comparison.png")
-                    print(f"   - mlp_feature_importance.png")
-                    print(f"   - mlp_predictions_vs_actual.png")
-                    print(f"   - mlp_feature_importance.csv")
-
-            except ImportError as e:
-                print(f"Ошибка импорта: {e}")
-            except Exception as e:
-                print(f"Ошибка при построении нейросети: {e}")
-
-        # ============= ЗАВЕРШЕНИЕ =============
-        elif model_choice == '4':
-            print("\n✅ Завершение работы с моделями...")
-            break
-
-        else:
-            print("❌ Неверный выбор. Пожалуйста, выберите 1, 2, 3 или 4.")
-
-    if results:
+        # Запуск оптимизации
         optimize_choice = input(
-            f"\nПровести оптимизацию входных параметров для максимизации {results['target']}? (да/нет): ").strip().lower()
+            f"\nПровести оптимизацию для максимизации {output_columns[0]}? (да/нет): ").strip().lower()
 
         if optimize_choice in ['да', 'yes', 'y', 'д']:
             try:
                 from optimization import run_optimization
+                from config import OPTIMIZATION_TOP_FEATURES
 
                 optimization_folder = os.path.join(modeling_folder, 'optimization')
                 os.makedirs(optimization_folder, exist_ok=True)
 
-                # Всё! Параметры берутся из config.py автоматически
+                n_features = None if use_all_features else OPTIMIZATION_TOP_FEATURES
+
                 opt_result = run_optimization(
-                    df_original=df_processed,
-                    model=model,
+                    df_original=data_for_model,
+                    model=selected_model,
                     input_columns=input_columns,
                     output_columns=output_columns,
+                    n_top_features=n_features,
                     save_folder=optimization_folder
                 )
 
@@ -485,22 +417,7 @@ def main():
 
             except Exception as e:
                 print(f"Ошибка при оптимизации: {e}")
-
-    # ============= ИТОГОВАЯ ИНФОРМАЦИЯ =============
-    print("\n" + "=" * 60)
-    print("ИТОГОВАЯ СТРУКТУРА СОХРАНЕННЫХ ДАННЫХ")
-    print("=" * 60)
-    print(f"\nОсновная папка: {main_plots_folder}")
-    print(f"  ├── 01_raw_data/              # Исходные данные (графики, тепловая карта)")
-    if processed_data_folder:
-        print(f"  ├── 02_processed_data/        # Обработанные данные (графики с границами)")
-    if best_window_folder:
-        print(f"  ├── 03_best_window/           # Лучшее окно (данные CSV, графики)")
-    print(f"  └── 04_modeling_results/       # Результаты моделирования")
-
-    print("\n" + "=" * 60)
-    print("ГОТОВО!")
-    print("=" * 60)
-
+    else:
+        print("\n❌ Не удалось обучить ни одну модель!")
 if __name__ == "__main__":
     main()
