@@ -1,8 +1,7 @@
 import os
 import pandas as pd
-import numpy as np
-from visualization import plot_single_column, plot_all_columns
-from outlier_filter import apply_outlier_filter, visualize_outlier_filter
+from utils.visualization import plot_single_column, plot_all_columns
+from preprocessing.outlier_filter import apply_outlier_filter, visualize_outlier_filter
 
 
 def interactive_bounds_adjustment(df, all_columns, input_columns, output_columns, save_folder):

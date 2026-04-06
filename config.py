@@ -1,9 +1,11 @@
-"""
-Файл конфигурации проекта
-"""
+import os
 
 # ============= ПУТИ К ФАЙЛАМ =============
-INPUT_FILE = 'ПП.csv'
+INPUT_FILE = 'data/ПП.csv'
+
+# Создаем папку results, если её нет
+RESULTS_DIR = "results"
+os.makedirs(RESULTS_DIR, exist_ok=True)
 
 # ============= ПАРАМЕТРЫ ЗАГРУЗКИ =============
 ENCODINGS_TO_TRY = ['cp1251', 'windows-1251', 'cp1252', 'latin1', 'iso-8859-1', 'utf-8-sig']
@@ -20,14 +22,15 @@ RANDOM_STATE = 42
 TOP_FEATURES_TO_SHOW = 10  # Количество важных признаков для вывода в терминал
 
 # Random Forest параметры
+# Random Forest параметры
 RF_PARAMS = {
     'n_estimators': 200,
     'max_depth': 8,
     'min_samples_split': 10,
     'min_samples_leaf': 5,
     'max_features': 'sqrt',
-    'bootstrap': True,
-    'oob_score': True,
+    'bootstrap': True,      # bootstrap должен быть True для oob_score
+    'oob_score': True,      # out-of-bag оценка
     'n_jobs': -1,
     'random_state': 42
 }
@@ -83,3 +86,14 @@ PEAK_PROMINENCE = 0.5
 PEAK_DISTANCE = 10
 SAVGOL_WINDOW = 21
 SAVGOL_POLYORDER = 3
+
+# ============= ПАРАМЕТРЫ ГЕНЕРАЦИИ НАБОРОВ =============
+GENERATION_NUM_SAMPLES = 100        # Количество генерируемых наборов
+GENERATION_METHOD = 'latin'         # Метод генерации: 'random', 'latin', 'grid'
+GENERATION_USE_TOP_FEATURES = True  # Использовать только важные признаки (True) или все (False)
+GENERATION_TOP_FEATURES = 8         # Количество важных признаков для генерации (если USE_TOP_FEATURES=True)
+
+# ============= ПАРАМЕТРЫ OPTUNA =============
+OPTUNA_N_TRIALS = 200              # Количество испытаний для оптимизации
+OPTUNA_CV_FOLDS = 5               # Количество фолдов для кросс-валидации
+OPTUNA_USE_OPTIMIZED_PARAMS = False  # Использовать оптимизированные параметры (True/False)

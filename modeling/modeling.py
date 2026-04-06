@@ -17,6 +17,8 @@ from config import (TEST_SIZE, RANDOM_STATE, RF_PARAMS, XGB_PARAMS, MLP_PARAMS, 
 warnings.filterwarnings('ignore')
 plt.ioff()
 
+from modeling.hyperopt import optimize_random_forest, optimize_xgboost, optimize_mlp, plot_optimization_history
+from config import OPTUNA_N_TRIALS, OPTUNA_CV_FOLDS, OPTUNA_USE_OPTIMIZED_PARAMS
 
 def _prepare_data(df, input_columns, output_columns):
     """Подготовка данных для обучения"""
@@ -141,7 +143,14 @@ def build_random_forest_model(df, input_columns, output_columns, save_folder=Non
     X, y, target = _prepare_data(df, input_columns, output_columns)
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=TEST_SIZE, random_state=RANDOM_STATE)
 
-    model = RandomForestRegressor(**RF_PARAMS)
+    # Получаем параметры из конфига
+    rf_params = RF_PARAMS.copy()
+
+    # Проверка: если bootstrap=False, то oob_score должен быть False
+    if not rf_params.get('bootstrap', True):
+        rf_params['oob_score'] = False
+
+    model = RandomForestRegressor(**rf_params)
     model.fit(X_train, y_train)
 
     y_train_pred = model.predict(X_train)
