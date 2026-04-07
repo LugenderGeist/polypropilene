@@ -328,7 +328,6 @@ def plot_optimization_results(result, bounds, optimize_features, target, save_fo
         save_path1 = os.path.join(save_folder, '01_convergence_history.png')
         plt.savefig(save_path1, dpi=300, bbox_inches='tight')
         print(f"📁 График сходимости сохранен: {save_path1}")
-    plt.show()
     plt.close(fig1)
 
     # 2. Оптимальные значения параметров
@@ -365,7 +364,6 @@ def plot_optimization_results(result, bounds, optimize_features, target, save_fo
         save_path2 = os.path.join(save_folder, '02_optimal_parameters.png')
         plt.savefig(save_path2, dpi=300, bbox_inches='tight')
         print(f"📁 График оптимальных параметров сохранен: {save_path2}")
-    plt.show()
     plt.close(fig2)
 
     # 3. Распределение оптимальных значений
@@ -414,7 +412,6 @@ def plot_optimization_results(result, bounds, optimize_features, target, save_fo
         save_path3 = os.path.join(save_folder, '03_optimal_distribution.png')
         plt.savefig(save_path3, dpi=300, bbox_inches='tight')
         print(f"📁 График распределения оптимальных значений сохранен: {save_path3}")
-    plt.show()
     plt.close(fig3)
 
     # 4. Динамика улучшения
@@ -437,7 +434,6 @@ def plot_optimization_results(result, bounds, optimize_features, target, save_fo
         save_path4 = os.path.join(save_folder, '04_improvement_dynamics.png')
         plt.savefig(save_path4, dpi=300, bbox_inches='tight')
         print(f"📁 График динамики улучшения сохранен: {save_path4}")
-    plt.show()
     plt.close(fig4)
 
 

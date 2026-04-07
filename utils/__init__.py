@@ -14,9 +14,9 @@ from .utils import (
 )
 
 from .visualization import (
-    plot_all_columns,
     plot_raw_data,
     plot_correlation_heatmap,
+    plot_all_columns,
     plot_correlation_with_target,
     plot_single_column
 )

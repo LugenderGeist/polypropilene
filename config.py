@@ -22,7 +22,6 @@ RANDOM_STATE = 42
 TOP_FEATURES_TO_SHOW = 10  # Количество важных признаков для вывода в терминал
 
 # Random Forest параметры
-# Random Forest параметры
 RF_PARAMS = {
     'n_estimators': 200,
     'max_depth': 8,

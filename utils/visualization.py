@@ -1,3 +1,6 @@
+import matplotlib
+
+matplotlib.use('TkAgg')  # Добавьте эту строку в начало файла
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
@@ -59,7 +62,6 @@ def plot_raw_data(df, input_columns, output_columns, save_folder=None):
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
         print(f"График сохранен: {save_path}")
 
-    plt.show()
     plt.close(fig)
 
 
@@ -110,19 +112,25 @@ def plot_correlation_heatmap(df, input_columns, output_columns, save_folder=None
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
         print(f"Тепловая карта сохранена: {save_path}")
 
-    plt.show()
     plt.close(fig)
     return corr_matrix
 
 
 def plot_single_column(df, column, data_type, lower_bound=None, upper_bound=None, mean_val=None, save_path=None):
     """Построение графика для одного столбца"""
+    print(f"\n🔍 Построение графика для столбца: {column}")
+    print(f"   Тип данных: {data_type}")
+    print(f"   Нижняя граница: {lower_bound}")
+    print(f"   Верхняя граница: {upper_bound}")
+    print(f"   Среднее: {mean_val}")
+
     fig, ax = plt.subplots(figsize=(12, 6))
 
     color = 'blue' if data_type == 'Входные' else 'red'
 
     try:
         data = pd.to_numeric(df[column], errors='coerce')
+        print(f"   Данные: {len(data)} строк, пропусков: {data.isna().sum()}")
 
         if data.isna().all():
             ax.text(0.5, 0.5, f'Столбец "{column}"\nне содержит числовых данных',
@@ -131,11 +139,14 @@ def plot_single_column(df, column, data_type, lower_bound=None, upper_bound=None
         else:
             if mean_val is None:
                 mean_val = data.mean()
+                print(f"   Вычислено среднее: {mean_val:.4f}")
 
             if lower_bound is None:
                 lower_bound = mean_val * 0.5
+                print(f"   Вычислена нижняя граница: {lower_bound:.4f}")
             if upper_bound is None:
                 upper_bound = mean_val * 1.5
+                print(f"   Вычислена верхняя граница: {upper_bound:.4f}")
 
             ax.plot(df.index, data, color=color, alpha=0.7, linewidth=1.5, marker='.', markersize=2, label='Данные')
             ax.axhline(y=mean_val, color='black', linestyle='--', alpha=0.5, linewidth=1.5,
@@ -165,6 +176,7 @@ def plot_single_column(df, column, data_type, lower_bound=None, upper_bound=None
                     verticalalignment='top', bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
 
     except Exception as e:
+        print(f"   Ошибка: {e}")
         ax.text(0.5, 0.5, f'Ошибка: {str(e)}', ha='center', va='center', transform=ax.transAxes)
         ax.set_title(f'{column}\n({data_type})', fontsize=12, fontweight='bold')
 
@@ -255,7 +267,6 @@ def plot_all_columns(df, bounds_config, input_columns, output_columns, save_fold
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
         print(f"Общий график сохранен: {save_path}")
 
-    plt.show()
     plt.close(fig)
 
 
@@ -309,5 +320,4 @@ def plot_correlation_with_target(df, target_columns, input_columns, save_folder=
             plt.savefig(save_path, dpi=300, bbox_inches='tight')
             print(f"График корреляций для {target} сохранен: {save_path}")
 
-        plt.show()
         plt.close(fig)

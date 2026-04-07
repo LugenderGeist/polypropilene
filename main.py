@@ -26,6 +26,8 @@ from modeling.hyperopt import (optimize_random_forest, optimize_xgboost, optimiz
 from modeling.optimization import run_optimization
 from modeling.generation import generate_samples
 
+import matplotlib
+matplotlib.use('TkAgg')  # Добавьте после импортов в main.py
 
 def create_plots_folder():
     """Создает папку для графиков в директории results"""
@@ -33,7 +35,6 @@ def create_plots_folder():
     folder_path = os.path.join(RESULTS_DIR, folder_name)
     os.makedirs(folder_path, exist_ok=True)
     return folder_path
-
 
 def save_optimized_params_to_json(params_dict, save_folder):
     """Сохраняет все оптимизированные параметры в один JSON файл"""
@@ -74,10 +75,10 @@ def main():
     raw_data_folder = os.path.join(main_plots_folder, '01_raw_data')
     os.makedirs(raw_data_folder, exist_ok=True)
 
-    print("\n1.1. Графики сырых данных...")
+    print("\nГрафики сырых данных сохраняются в папке проекта")
     plot_raw_data(df, input_columns, output_columns, save_folder=raw_data_folder)
 
-    print("\n1.2. Тепловая карта корреляций...")
+    print("\nТепловая карта корреляций сохраняется в папке проекта")
     plot_correlation_heatmap(df, input_columns, output_columns,
                              save_folder=raw_data_folder,
                              title="Тепловая карта корреляций (исходные данные)")
@@ -85,7 +86,6 @@ def main():
     # Сохраняем исходные данные
     original_csv_path = os.path.join(raw_data_folder, 'original_data.csv')
     df.to_csv(original_csv_path, index=False, encoding='utf-8-sig')
-    print(f"\n📁 Исходные данные сохранены в: {original_csv_path}")
 
     # ============= 2. ВЫБОР РЕЖИМА РАБОТЫ =============
     print("\n" + "=" * 80)
@@ -105,14 +105,13 @@ def main():
     if mode_choice == '1':
         # ============= ПОЛНЫЙ РЕЖИМ: ОБРАБОТКА ДАННЫХ =============
         print("\n" + "=" * 80)
-        print("ПОЛНЫЙ РЕЖИМ: ОБРАБОТКА ДАННЫХ")
+        print("ОБРАБОТКА ДАННЫХ")
         print("=" * 80)
 
         processed_data_folder = os.path.join(main_plots_folder, '02_processed_data')
         os.makedirs(processed_data_folder, exist_ok=True)
 
-        print("\n2.1. Графики с границами ±50%")
-        input("Нажмите Enter, чтобы показать графики...")
+        print("\n2.1. Графики с границами ±50% сохраняются в папке проекта")
 
         temp_config = {}
         for col in all_data_columns:
@@ -137,7 +136,7 @@ def main():
 
         # Проверка выбросов
         print("\n" + "=" * 80)
-        print("ПРОВЕРКА ВЫБРОСОВ")
+        print("УДАЛЕНИЕ ВЫБРАННЫХ ДАННЫХ")
         print("=" * 80)
 
         outlier_info = {}
@@ -157,14 +156,7 @@ def main():
                     pass
 
         if has_outliers:
-            print("\nОбнаружены выбросы за пределами установленных границ:")
-            for col, info in outlier_info.items():
-                print(f"  📊 {col}: {info['count']} выбросов ({info['percent']:.2f}%)")
-
-            print("\nПоказываю графики с выделенными выбросами...")
-            plot_all_columns(df, bounds_config, input_columns, output_columns, save_folder=processed_data_folder)
-
-            remove_choice = input("\nОчистить данные (удалить строки с выбросами)? (да/нет): ").strip().lower()
+            remove_choice = input("\nУдалить строки с выбросами? (да/нет): ").strip().lower()
 
             if remove_choice in ['да', 'yes', 'y', 'д']:
                 df_cleaned, removed_indices, removal_report = remove_outliers(df, bounds_config, all_data_columns)
@@ -174,29 +166,22 @@ def main():
                     print(f"\n✅ Удалено строк: {len(removed_indices)}")
                     print(f"   Осталось строк: {len(df_cleaned)}")
 
-                    print("\nПоказываю графики после удаления выбросов...")
+                    print("\nГрафики после очистки сохранены в папке проекта")
                     plot_all_columns(df_cleaned, bounds_config, input_columns, output_columns,
                                      save_folder=processed_data_folder)
 
-                    print("\nСтрою тепловую карту для очищенных данных...")
+                    print("\nТепловая карта после очистки сохранена в папке проекта")
                     plot_correlation_heatmap(df_cleaned, input_columns, output_columns,
                                              save_folder=processed_data_folder,
                                              title="Тепловая карта корреляций (очищенные данные)")
 
                     cleaned_path, info_path = save_cleaned_data(df_cleaned, 'ПП.csv', processed_data_folder)
-                    print(f"\n📁 Очищенные данные сохранены в: {cleaned_path}")
                 else:
                     print("\nВыбросов не обнаружено.")
             else:
                 print("\nОчистка данных пропущена.")
         else:
             print("\n✅ Выбросов за пределами границ не обнаружено.")
-
-        if bounds_config:
-            save_config = input("\nСохранить конфигурацию границ в файл? (да/нет): ").strip().lower()
-            if save_config in ['да', 'yes', 'y', 'д']:
-                config_file = save_bounds_config(bounds_config, processed_data_folder)
-                print(f"Конфигурация сохранена в файл: {config_file}")
 
         print(f"\n✅ Обработка данных завершена. Результаты сохранены в: {processed_data_folder}")
 
@@ -443,139 +428,159 @@ def main():
     if results_dict:
         best_model_name, best_r2 = compare_models(results_dict, save_folder=modeling_folder)
 
-        # ============= 6. ВЫБОР ДЕЙСТВИЯ =============
-        print("\n" + "=" * 80)
-        print("ВЫБОР ДЕЙСТВИЯ")
-        print("=" * 80)
-        print("Что вы хотите сделать?")
-        print("1. Оптимизация (поиск лучших входных параметров)")
-        print("2. Генерация наборов входных параметров")
-        print("3. Завершить работу")
-
-        action_choice = input("\nВаш выбор (1/2/3): ").strip()
-
-        if action_choice == '1':
-            # ОПТИМИЗАЦИЯ
+        # ============= 6. ЦИКЛ ВЫБОРА ДЕЙСТВИЯ =============
+        while True:
             print("\n" + "=" * 80)
-            print("ОПТИМИЗАЦИЯ ВХОДНЫХ ПАРАМЕТРОВ")
+            print("ВЫБОР ДЕЙСТВИЯ")
             print("=" * 80)
+            print("Что вы хотите сделать?")
+            print("1. Оптимизация (поиск лучших входных параметров)")
+            print("2. Генерация наборов входных параметров")
+            print("3. Завершить работу")
 
-            print("\nДоступные модели:")
-            for i, name in enumerate(results_dict.keys(), 1):
-                print(f"  {i}. {name} (R² = {results_dict[name]['r2_test']:.4f})")
-            print(f"  {len(results_dict) + 1}. Использовать лучшую ({best_model_name})")
+            action_choice = input("\nВаш выбор (1/2/3): ").strip()
 
-            opt_choice = input(f"\nВыберите модель для оптимизации (1-{len(results_dict) + 1}): ").strip()
+            if action_choice == '1':
+                # ============= ОПТИМИЗАЦИЯ =============
+                print("\n" + "=" * 80)
+                print("ОПТИМИЗАЦИЯ ВХОДНЫХ ПАРАМЕТРОВ")
+                print("=" * 80)
 
-            try:
-                opt_idx = int(opt_choice) - 1
-                if opt_idx == len(results_dict):
+                print("\nДоступные модели:")
+                for i, name in enumerate(results_dict.keys(), 1):
+                    print(f"  {i}. {name} (R² = {results_dict[name]['r2_test']:.4f})")
+                print(f"  {len(results_dict) + 1}. Использовать лучшую ({best_model_name})")
+
+                opt_choice = input(f"\nВыберите модель для оптимизации (1-{len(results_dict) + 1}): ").strip()
+
+                try:
+                    opt_idx = int(opt_choice) - 1
+                    if opt_idx == len(results_dict):
+                        selected_model_name = best_model_name
+                    elif 0 <= opt_idx < len(results_dict):
+                        selected_model_name = list(results_dict.keys())[opt_idx]
+                    else:
+                        selected_model_name = best_model_name
+                except:
                     selected_model_name = best_model_name
-                elif 0 <= opt_idx < len(results_dict):
-                    selected_model_name = list(results_dict.keys())[opt_idx]
+
+                selected_model = models_dict[selected_model_name]
+                print(f"\n✅ Для оптимизации выбрана: {selected_model_name}")
+
+                print("\nВыберите признаки для оптимизации:")
+                print("  1. Только наиболее важные (из config.py)")
+                print("  2. Все входные параметры")
+
+                feat_choice = input("Ваш выбор (1/2): ").strip()
+                use_all_features = feat_choice == '2'
+
+                optimize_choice = input(
+                    f"\nПровести оптимизацию для максимизации {output_columns[0]}? (да/нет): ").strip().lower()
+
+                if optimize_choice in ['да', 'yes', 'y', 'д']:
+                    from config import OPTIMIZATION_TOP_FEATURES
+
+                    optimization_folder = os.path.join(main_plots_folder, '05_optimization')
+                    os.makedirs(optimization_folder, exist_ok=True)
+
+                    n_features = None if use_all_features else OPTIMIZATION_TOP_FEATURES
+
+                    opt_result = run_optimization(
+                        df_original=data_for_model,
+                        model=selected_model,
+                        input_columns=input_columns,
+                        output_columns=output_columns,
+                        n_top_features=n_features,
+                        save_folder=optimization_folder
+                    )
+
+                    if opt_result:
+                        print(f"\n✅ Оптимизация завершена!")
+                        print(f"   Лучшее значение: {opt_result['best_fitness']:.4f}")
+                        print(f"   Результаты сохранены в: {optimization_folder}")
+
+                    # После завершения оптимизации возвращаемся в меню
+                    input("\nНажмите Enter, чтобы вернуться к выбору действия...")
+                    continue
                 else:
+                    print("\nОптимизация отменена.")
+                    continue
+
+            elif action_choice == '2':
+                # ============= ГЕНЕРАЦИЯ =============
+                print("\n" + "=" * 80)
+                print("ГЕНЕРАЦИЯ НАБОРОВ ВХОДНЫХ ПАРАМЕТРОВ")
+                print("=" * 80)
+
+                print("\nДоступные модели:")
+                for i, name in enumerate(results_dict.keys(), 1):
+                    print(f"  {i}. {name} (R² = {results_dict[name]['r2_test']:.4f})")
+                print(f"  {len(results_dict) + 1}. Использовать лучшую ({best_model_name})")
+
+                gen_choice = input(f"\nВыберите модель для генерации (1-{len(results_dict) + 1}): ").strip()
+
+                try:
+                    gen_idx = int(gen_choice) - 1
+                    if gen_idx == len(results_dict):
+                        selected_model_name = best_model_name
+                    elif 0 <= gen_idx < len(results_dict):
+                        selected_model_name = list(results_dict.keys())[gen_idx]
+                    else:
+                        selected_model_name = best_model_name
+                except:
                     selected_model_name = best_model_name
-            except:
-                selected_model_name = best_model_name
 
-            selected_model = models_dict[selected_model_name]
-            print(f"\n✅ Для оптимизации выбрана: {selected_model_name}")
+                selected_model = models_dict[selected_model_name]
+                print(f"\n✅ Для генерации выбрана: {selected_model_name}")
 
-            print("\nВыберите признаки для оптимизации:")
-            print("  1. Только наиболее важные (из config.py)")
-            print("  2. Все входные параметры")
+                from config import GENERATION_NUM_SAMPLES, GENERATION_METHOD, GENERATION_USE_TOP_FEATURES, \
+                    GENERATION_TOP_FEATURES
 
-            feat_choice = input("Ваш выбор (1/2): ").strip()
-            use_all_features = feat_choice == '2'
-
-            optimize_choice = input(
-                f"\nПровести оптимизацию для максимизации {output_columns[0]}? (да/нет): ").strip().lower()
-
-            if optimize_choice in ['да', 'yes', 'y', 'д']:
-                from config import OPTIMIZATION_TOP_FEATURES
-
-                optimization_folder = os.path.join(main_plots_folder, '05_optimization')
-                os.makedirs(optimization_folder, exist_ok=True)
-
-                n_features = None if use_all_features else OPTIMIZATION_TOP_FEATURES
-
-                opt_result = run_optimization(
-                    df_original=data_for_model,
-                    model=selected_model,
-                    input_columns=input_columns,
-                    output_columns=output_columns,
-                    n_top_features=n_features,
-                    save_folder=optimization_folder
-                )
-
-                if opt_result:
-                    print(f"\n✅ Оптимизация завершена!")
-                    print(f"   Лучшее значение: {opt_result['best_fitness']:.4f}")
-
-        elif action_choice == '2':
-            # ГЕНЕРАЦИЯ
-            print("\n" + "=" * 80)
-            print("ГЕНЕРАЦИЯ НАБОРОВ ВХОДНЫХ ПАРАМЕТРОВ")
-            print("=" * 80)
-
-            print("\nДоступные модели:")
-            for i, name in enumerate(results_dict.keys(), 1):
-                print(f"  {i}. {name} (R² = {results_dict[name]['r2_test']:.4f})")
-            print(f"  {len(results_dict) + 1}. Использовать лучшую ({best_model_name})")
-
-            gen_choice = input(f"\nВыберите модель для генерации (1-{len(results_dict) + 1}): ").strip()
-
-            try:
-                gen_idx = int(gen_choice) - 1
-                if gen_idx == len(results_dict):
-                    selected_model_name = best_model_name
-                elif 0 <= gen_idx < len(results_dict):
-                    selected_model_name = list(results_dict.keys())[gen_idx]
+                print(f"\n📊 Параметры генерации (из config.py):")
+                print(f"   - Количество наборов: {GENERATION_NUM_SAMPLES}")
+                print(f"   - Метод: {GENERATION_METHOD}")
+                if GENERATION_USE_TOP_FEATURES:
+                    print(f"   - Используются топ-{GENERATION_TOP_FEATURES} важных признаков")
                 else:
-                    selected_model_name = best_model_name
-            except:
-                selected_model_name = best_model_name
+                    print(f"   - Используются все {len(input_columns)} признаков")
 
-            selected_model = models_dict[selected_model_name]
-            print(f"\n✅ Для генерации выбрана: {selected_model_name}")
+                generate_choice = input(f"\nЗапустить генерацию? (да/нет): ").strip().lower()
 
-            from config import GENERATION_NUM_SAMPLES, GENERATION_METHOD, GENERATION_USE_TOP_FEATURES, \
-                GENERATION_TOP_FEATURES
+                if generate_choice in ['да', 'yes', 'y', 'д']:
+                    generation_folder = os.path.join(main_plots_folder, '06_generation')
+                    os.makedirs(generation_folder, exist_ok=True)
 
-            print(f"\n📊 Параметры генерации (из config.py):")
-            print(f"   - Количество наборов: {GENERATION_NUM_SAMPLES}")
-            print(f"   - Метод: {GENERATION_METHOD}")
-            if GENERATION_USE_TOP_FEATURES:
-                print(f"   - Используются топ-{GENERATION_TOP_FEATURES} важных признаков")
+                    n_features = GENERATION_TOP_FEATURES if GENERATION_USE_TOP_FEATURES else None
+
+                    inputs_df, predictions_df = generate_samples(
+                        df_original=data_for_model,
+                        model=selected_model,
+                        input_columns=input_columns,
+                        output_columns=output_columns,
+                        n_top_features=n_features,
+                        n_samples=GENERATION_NUM_SAMPLES,
+                        method=GENERATION_METHOD,
+                        save_folder=generation_folder
+                    )
+
+                    print(f"\n✅ Генерация завершена!")
+                    print(f"   Создано {len(inputs_df)} наборов")
+                    print(f"   Результаты сохранены в: {generation_folder}")
+
+                    # После завершения генерации возвращаемся в меню
+                    input("\nНажмите Enter, чтобы вернуться к выбору действия...")
+                    continue
+                else:
+                    print("\nГенерация отменена.")
+                    continue
+
+            elif action_choice == '3':
+                print("\nЗавершение работы...")
+                break
+
             else:
-                print(f"   - Используются все {len(input_columns)} признаков")
-
-            generate_choice = input(f"\nЗапустить генерацию? (да/нет): ").strip().lower()
-
-            if generate_choice in ['да', 'yes', 'y', 'д']:
-                generation_folder = os.path.join(main_plots_folder, '06_generation')
-                os.makedirs(generation_folder, exist_ok=True)
-
-                n_features = GENERATION_TOP_FEATURES if GENERATION_USE_TOP_FEATURES else None
-
-                inputs_df, predictions_df = generate_samples(
-                    df_original=data_for_model,
-                    model=selected_model,
-                    input_columns=input_columns,
-                    output_columns=output_columns,
-                    n_top_features=n_features,
-                    n_samples=GENERATION_NUM_SAMPLES,
-                    method=GENERATION_METHOD,
-                    save_folder=generation_folder
-                )
-
-                print(f"\n✅ Генерация завершена!")
-                print(f"   Создано {len(inputs_df)} наборов")
-
-        elif action_choice == '3':
-            print("\nЗавершение работы...")
-        else:
-            print("Неверный выбор.")
+                print("Неверный выбор. Пожалуйста, выберите 1, 2 или 3.")
+                continue
     else:
         print("\n❌ Не удалось обучить ни одну модель!")
 

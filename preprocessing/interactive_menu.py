@@ -36,7 +36,7 @@ def interactive_bounds_adjustment(df, all_columns, input_columns, output_columns
     # Интерактивный цикл изменения границ
     while True:
         print("\n" + "=" * 80)
-        print("НАСТРОЙКА ГРАНИЦ / ФИЛЬТРАЦИЯ ВЫБРОСОВ")
+        print("ЧИСТКА ДАННЫХ")
         print("=" * 80)
         print("\nДоступные столбцы для настройки:")
 
@@ -97,7 +97,6 @@ def interactive_bounds_adjustment(df, all_columns, input_columns, output_columns
                         config['lower'] = new_lower
                         print(f"Нижняя граница изменена на {new_lower:.4f}")
 
-                        # Показываем обновленный график
                         print("\nПоказываю обновленный график...")
                         plot_single_column(df, col, config['data_type'],
                                            config['lower'], config['upper'], config['mean'])
@@ -112,7 +111,6 @@ def interactive_bounds_adjustment(df, all_columns, input_columns, output_columns
                         config['upper'] = new_upper
                         print(f"Верхняя граница изменена на {new_upper:.4f}")
 
-                        # Показываем обновленный график
                         print("\nПоказываю обновленный график...")
                         plot_single_column(df, col, config['data_type'],
                                            config['lower'], config['upper'], config['mean'])
@@ -121,7 +119,7 @@ def interactive_bounds_adjustment(df, all_columns, input_columns, output_columns
                         print("Ошибка: введите корректное число")
 
                 elif action == '3':
-                    # Показываем график этого столбца
+                    # Показываем график этого столбца с текущими границами
                     plot_single_column(df, col, config['data_type'],
                                        config['lower'], config['upper'], config['mean'])
 
@@ -181,13 +179,10 @@ def interactive_bounds_adjustment(df, all_columns, input_columns, output_columns
                         apply_filter = input("\nПрименить этот фильтр и обновить границы? (да/нет): ").strip().lower()
                         if apply_filter in ['да', 'yes', 'y', 'д']:
                             if bounds is not None:
-                                # Если есть границы, обновляем конфигурацию
                                 config['lower'] = bounds[0]
                                 config['upper'] = bounds[1]
                                 print(f"Границы обновлены: [{bounds[0]:.4f}, {bounds[1]:.4f}]")
                             else:
-                                # Если границ нет (для методов без явных границ),
-                                # предлагаем установить границы по данным после фильтрации
                                 filtered_clean = filtered_data.dropna()
                                 if len(filtered_clean) > 0:
                                     new_mean = filtered_clean.mean()
@@ -202,11 +197,9 @@ def interactive_bounds_adjustment(df, all_columns, input_columns, output_columns
                                         config['mean'] = new_mean
                                         print("Границы обновлены")
 
-                            # Обновляем данные в DataFrame
                             df[col] = filtered_data
                             print("Данные обновлены. Выбросы заменены на NaN.")
 
-                            # Показываем обновленный график
                             print("\nПоказываю обновленный график с новыми границами...")
                             plot_single_column(df, col, config['data_type'],
                                                config['lower'], config['upper'], config['mean'])

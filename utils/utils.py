@@ -4,7 +4,6 @@ import pandas as pd
 from datetime import datetime
 from config import ENCODINGS_TO_TRY  # Добавляем импорт из config
 
-
 # Функция для определения кодировки файла
 def detect_encoding(file_path):
     with open(file_path, 'rb') as f:
