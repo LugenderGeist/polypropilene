@@ -1,6 +1,5 @@
 import os
 import pandas as pd
-import numpy as np
 import json
 from datetime import datetime
 
@@ -30,14 +29,12 @@ import matplotlib
 matplotlib.use('TkAgg')  # Добавьте после импортов в main.py
 
 def create_plots_folder():
-    """Создает папку для графиков в директории results"""
     folder_name = f"plots_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
     folder_path = os.path.join(RESULTS_DIR, folder_name)
     os.makedirs(folder_path, exist_ok=True)
     return folder_path
 
 def save_optimized_params_to_json(params_dict, save_folder):
-    """Сохраняет все оптимизированные параметры в один JSON файл"""
     json_path = os.path.join(save_folder, 'optimized_params.json')
     with open(json_path, 'w', encoding='utf-8') as f:
         json.dump(params_dict, f, indent=4, ensure_ascii=False)
@@ -294,7 +291,7 @@ def main():
     if use_optuna in ['да', 'yes', 'y', 'д']:
         os.makedirs(optuna_folder, exist_ok=True)
 
-        X_opt = data_for_model[input_columns].copy().fillna(data_for_model[input_columns].mean())
+        x_opt = data_for_model[input_columns].copy().fillna(data_for_model[input_columns].mean())
         y_opt = data_for_model[output_columns[0]].copy().fillna(data_for_model[output_columns[0]].mean())
 
         # Оптимизация Random Forest
@@ -302,7 +299,7 @@ def main():
         if rf_choice in ['да', 'yes', 'y', 'д']:
             from config import OPTUNA_N_TRIALS, OPTUNA_CV_FOLDS
             best_params, study = optimize_random_forest(
-                X_opt, y_opt, n_trials=OPTUNA_N_TRIALS, cv_folds=OPTUNA_CV_FOLDS,
+                x_opt, y_opt, n_trials=OPTUNA_N_TRIALS, cv_folds=OPTUNA_CV_FOLDS,
                 save_folder=optuna_folder
             )
             optimized_params['Random Forest'] = best_params
@@ -313,7 +310,7 @@ def main():
         if xgb_choice in ['да', 'yes', 'y', 'д']:
             from config import OPTUNA_N_TRIALS
             best_params, study = optimize_xgboost(
-                X_opt, y_opt, n_trials=OPTUNA_N_TRIALS,
+                x_opt, y_opt, n_trials=OPTUNA_N_TRIALS,
                 save_folder=optuna_folder
             )
             optimized_params['XGBoost'] = best_params
@@ -324,7 +321,7 @@ def main():
         if mlp_choice in ['да', 'yes', 'y', 'д']:
             from config import OPTUNA_N_TRIALS
             best_params, study = optimize_mlp(
-                X_opt, y_opt, n_trials=OPTUNA_N_TRIALS,
+                x_opt, y_opt, n_trials=OPTUNA_N_TRIALS,
                 save_folder=optuna_folder
             )
             optimized_params['MLP'] = best_params
@@ -342,7 +339,6 @@ def main():
     print("ОБУЧЕНИЕ МОДЕЛЕЙ")
     print("=" * 80)
 
-    # Спрашиваем, использовать ли оптимизированные параметры
     use_optimized = False
     if optimized_params:
         use_optimized_input = input("\nИспользовать оптимизированные параметры для моделей? (да/нет): ").strip().lower()

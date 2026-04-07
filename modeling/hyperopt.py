@@ -47,7 +47,7 @@ def load_best_params_from_json(model_name, save_folder):
     return None
 
 
-def objective_rf_cv(trial, X, y, cv_folds=5):
+def objective_rf_cv(trial, x, y, cv_folds=5):
     params = {
         'n_estimators': trial.suggest_int('n_estimators', 50, 300, step=50),
         'max_depth': trial.suggest_int('max_depth', 3, 15),
@@ -62,11 +62,11 @@ def objective_rf_cv(trial, X, y, cv_folds=5):
     # Важно: oob_score не используем при кросс-валидации
     # oob_score работает только с bootstrap=True, но для CV он не нужен
     model = RandomForestRegressor(**params)
-    scores = cross_val_score(model, X, y, cv=cv_folds, scoring='r2')
+    scores = cross_val_score(model, x, y, cv=cv_folds, scoring='r2')
     return scores.mean()
 
 
-def objective_xgb(trial, X_train, y_train, X_val, y_val):
+def objective_xgb(trial, x_train, y_train, x_val, y_val):
     params = {
         'n_estimators': trial.suggest_int('n_estimators', 50, 300, step=50),
         'max_depth': trial.suggest_int('max_depth', 3, 10),
@@ -81,15 +81,15 @@ def objective_xgb(trial, X_train, y_train, X_val, y_val):
         'verbosity': 0
     }
     model = xgb.XGBRegressor(**params)
-    model.fit(X_train, y_train, verbose=False)
-    y_pred = model.predict(X_val)
+    model.fit(x_train, y_train, verbose=False)
+    y_pred = model.predict(x_val)
     return r2_score(y_val, y_pred)
 
 
-def objective_mlp(trial, X_train, y_train, X_val, y_val):
+def objective_mlp(trial, x_train, y_train, x_val, y_val):
     scaler = StandardScaler()
-    X_train_scaled = scaler.fit_transform(X_train)
-    X_val_scaled = scaler.transform(X_val)
+    x_train_scaled = scaler.fit_transform(x_train)
+    x_val_scaled = scaler.transform(x_val)
 
     params = {
         'hidden_layer_sizes': trial.suggest_categorical('hidden_layer_sizes',
@@ -106,18 +106,18 @@ def objective_mlp(trial, X_train, y_train, X_val, y_val):
         'verbose': False
     }
     model = MLPRegressor(**params)
-    model.fit(X_train_scaled, y_train)
-    y_pred = model.predict(X_val_scaled)
+    model.fit(x_train_scaled, y_train)
+    y_pred = model.predict(x_val_scaled)
     return r2_score(y_val, y_pred)
 
 
-def optimize_random_forest(X, y, n_trials=50, cv_folds=5, save_folder=None):
+def optimize_random_forest(x, y, n_trials=50, cv_folds=5, save_folder=None):
     print("\n" + "=" * 60)
     print("🌲 ОПТИМИЗАЦИЯ RANDOM FOREST")
     print("=" * 60)
 
     study = optuna.create_study(direction='maximize', sampler=optuna.samplers.TPESampler(seed=42))
-    study.optimize(lambda trial: objective_rf_cv(trial, X, y, cv_folds), n_trials=n_trials, show_progress_bar=True)
+    study.optimize(lambda trial: objective_rf_cv(trial, x, y, cv_folds), n_trials=n_trials, show_progress_bar=True)
 
     best_params = study.best_params
     best_score = study.best_value
@@ -132,15 +132,15 @@ def optimize_random_forest(X, y, n_trials=50, cv_folds=5, save_folder=None):
     return best_params, study
 
 
-def optimize_xgboost(X, y, n_trials=50, save_folder=None):
+def optimize_xgboost(x, y, n_trials=50, save_folder=None):
     print("\n" + "=" * 60)
     print("🚀 ОПТИМИЗАЦИЯ XGBOOST")
     print("=" * 60)
 
-    X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
+    x_train, x_val, y_train, y_val = train_test_split(x, y, test_size=0.2, random_state=42)
 
     study = optuna.create_study(direction='maximize', sampler=optuna.samplers.TPESampler(seed=42))
-    study.optimize(lambda trial: objective_xgb(trial, X_train, y_train, X_val, y_val),
+    study.optimize(lambda trial: objective_xgb(trial, x_train, y_train, x_val, y_val),
                    n_trials=n_trials, show_progress_bar=True)
 
     best_params = study.best_params
@@ -156,15 +156,15 @@ def optimize_xgboost(X, y, n_trials=50, save_folder=None):
     return best_params, study
 
 
-def optimize_mlp(X, y, n_trials=50, save_folder=None):
+def optimize_mlp(x, y, n_trials=50, save_folder=None):
     print("\n" + "=" * 60)
     print("🧠 ОПТИМИЗАЦИЯ НЕЙРОСЕТИ (MLP)")
     print("=" * 60)
 
-    X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
+    x_train, x_val, y_train, y_val = train_test_split(x, y, test_size=0.2, random_state=42)
 
     study = optuna.create_study(direction='maximize', sampler=optuna.samplers.TPESampler(seed=42))
-    study.optimize(lambda trial: objective_mlp(trial, X_train, y_train, X_val, y_val),
+    study.optimize(lambda trial: objective_mlp(trial, x_train, y_train, x_val, y_val),
                    n_trials=n_trials, show_progress_bar=True)
 
     best_params = study.best_params

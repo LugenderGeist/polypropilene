@@ -12,24 +12,10 @@ warnings.filterwarnings('ignore')
 
 
 class GeneticOptimizer:
-    """
-    Генетический алгоритм для оптимизации выходного параметра
-    """
-
     def __init__(self, model, input_columns, scaler=None,
                  pop_size=None, generations=None, mutation_rate=None,
                  crossover_rate=None, elitism=None):
-        """
-        Parameters:
-        - model: обученная модель
-        - input_columns: список входных признаков
-        - scaler: нормализатор данных (если использовался)
-        - pop_size: размер популяции (берется из config, если не указан)
-        - generations: количество поколений (берется из config, если не указан)
-        - mutation_rate: вероятность мутации (берется из config, если не указан)
-        - crossover_rate: вероятность скрещивания (берется из config, если не указан)
-        - elitism: количество лучших особей (берется из config, если не указан)
-        """
+
         self.model = model
         self.input_columns = input_columns
         self.scaler = scaler
@@ -57,11 +43,9 @@ class GeneticOptimizer:
         return self.bounds
 
     def set_bounds_manual(self, bounds_dict):
-        """Ручная установка границ"""
         self.bounds = bounds_dict
 
     def create_individual(self):
-        """Создает одну особь (случайный набор параметров)"""
         individual = {}
         for col in self.input_columns:
             min_val = self.bounds[col]['min']
@@ -70,31 +54,28 @@ class GeneticOptimizer:
         return individual
 
     def create_population(self):
-        """Создает начальную популяцию"""
         return [self.create_individual() for _ in range(self.pop_size)]
 
     def evaluate_fitness(self, individual):
-        """Оценивает приспособленность особи (значение выходного параметра)"""
-        X = pd.DataFrame([individual])[self.input_columns]
+        x = pd.DataFrame([individual])[self.input_columns]
 
         if self.scaler is not None:
-            X_scaled = self.scaler.transform(X)
+            x_scaled = self.scaler.transform(x)
         else:
-            X_scaled = X.values
+            x_scaled = x.values
 
-        y_pred = self.model.predict(X_scaled)[0]
+        y_pred = self.model.predict(x_scaled)[0]
         return y_pred
 
     def evaluate_population(self, population):
-        """Оценивает всю популяцию"""
         fitness_scores = []
         for individual in population:
             fitness = self.evaluate_fitness(individual)
             fitness_scores.append(fitness)
         return fitness_scores
 
-    def select_parents(self, population, fitness_scores):
-        """Турнирная селекция для выбора родителей"""
+    @staticmethod
+    def select_parents(population, fitness_scores):
         parents = []
         for _ in range(2):
             tournament_size = 3
@@ -104,7 +85,6 @@ class GeneticOptimizer:
         return parents
 
     def crossover(self, parent1, parent2):
-        """Одноточечное скрещивание"""
         if np.random.random() > self.crossover_rate:
             return parent1.copy(), parent2.copy()
 
@@ -129,7 +109,6 @@ class GeneticOptimizer:
         return child1, child2
 
     def mutate(self, individual):
-        """Мутация особи"""
         for col in self.input_columns:
             if np.random.random() < self.mutation_rate:
                 std = self.bounds[col]['std'] * 0.1
@@ -141,7 +120,6 @@ class GeneticOptimizer:
         return individual
 
     def run(self, verbose=True):
-        """Запуск генетического алгоритма"""
         population = self.create_population()
         best_fitness_history = []
         mean_fitness_history = []
@@ -199,9 +177,6 @@ class GeneticOptimizer:
 
 def run_optimization(df_original, model, input_columns, output_columns,
                      n_top_features=None, save_folder=None):
-    """
-    Запуск оптимизации для максимизации выходного параметра
-    """
     from config import OPTIMIZATION_TOP_FEATURES
 
     if n_top_features is None:
@@ -310,8 +285,6 @@ def run_optimization(df_original, model, input_columns, output_columns,
 
 
 def plot_optimization_results(result, bounds, optimize_features, target, save_folder=None):
-    """Визуализация результатов оптимизации - каждый график в отдельном файле"""
-
     # 1. История оптимизации (график сходимости)
     fig1, ax1 = plt.subplots(figsize=(10, 6))
     generations = range(len(result['history']['best']))
@@ -436,9 +409,7 @@ def plot_optimization_results(result, bounds, optimize_features, target, save_fo
         print(f"📁 График динамики улучшения сохранен: {save_path4}")
     plt.close(fig4)
 
-
 def save_optimization_results(result, optimize_features, target, save_folder):
-    """Сохранение результатов оптимизации в файл"""
     results_path = os.path.join(save_folder, 'optimization_results.txt')
 
     with open(results_path, 'w', encoding='utf-8') as f:

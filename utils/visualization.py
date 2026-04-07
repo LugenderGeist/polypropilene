@@ -1,5 +1,4 @@
 import matplotlib
-
 matplotlib.use('TkAgg')  # Добавьте эту строку в начало файла
 import matplotlib.pyplot as plt
 import pandas as pd
