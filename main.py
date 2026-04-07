@@ -26,7 +26,7 @@ from modeling.optimization import run_optimization
 from modeling.generation import generate_samples
 
 import matplotlib
-matplotlib.use('TkAgg')  # Добавьте после импортов в main.py
+matplotlib.use('Agg')
 
 def create_plots_folder():
     folder_name = f"plots_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
@@ -183,9 +183,6 @@ def main():
         print(f"\n✅ Обработка данных завершена. Результаты сохранены в: {processed_data_folder}")
 
     elif mode_choice == '2':
-        print("\n" + "=" * 80)
-        print("БЫСТРЫЙ РЕЖИМ: ПРОПУСК ОБРАБОТКИ ДАННЫХ")
-        print("=" * 80)
         print("Данные будут использованы в исходном виде.")
         df_processed = df.copy()
 

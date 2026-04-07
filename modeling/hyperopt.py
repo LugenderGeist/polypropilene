@@ -11,6 +11,10 @@ from sklearn.metrics import r2_score
 import xgboost as xgb
 import warnings
 
+import matplotlib
+matplotlib.use('Agg')  # Используем неинтерактивный бэкенд
+import matplotlib.pyplot as plt
+
 warnings.filterwarnings('ignore')
 
 
@@ -58,9 +62,6 @@ def objective_rf_cv(trial, x, y, cv_folds=5):
         'random_state': 42,
         'n_jobs': -1
     }
-
-    # Важно: oob_score не используем при кросс-валидации
-    # oob_score работает только с bootstrap=True, но для CV он не нужен
     model = RandomForestRegressor(**params)
     scores = cross_val_score(model, x, y, cv=cv_folds, scoring='r2')
     return scores.mean()
@@ -112,10 +113,6 @@ def objective_mlp(trial, x_train, y_train, x_val, y_val):
 
 
 def optimize_random_forest(x, y, n_trials=50, cv_folds=5, save_folder=None):
-    print("\n" + "=" * 60)
-    print("🌲 ОПТИМИЗАЦИЯ RANDOM FOREST")
-    print("=" * 60)
-
     study = optuna.create_study(direction='maximize', sampler=optuna.samplers.TPESampler(seed=42))
     study.optimize(lambda trial: objective_rf_cv(trial, x, y, cv_folds), n_trials=n_trials, show_progress_bar=True)
 
@@ -133,10 +130,6 @@ def optimize_random_forest(x, y, n_trials=50, cv_folds=5, save_folder=None):
 
 
 def optimize_xgboost(x, y, n_trials=50, save_folder=None):
-    print("\n" + "=" * 60)
-    print("🚀 ОПТИМИЗАЦИЯ XGBOOST")
-    print("=" * 60)
-
     x_train, x_val, y_train, y_val = train_test_split(x, y, test_size=0.2, random_state=42)
 
     study = optuna.create_study(direction='maximize', sampler=optuna.samplers.TPESampler(seed=42))
@@ -157,10 +150,6 @@ def optimize_xgboost(x, y, n_trials=50, save_folder=None):
 
 
 def optimize_mlp(x, y, n_trials=50, save_folder=None):
-    print("\n" + "=" * 60)
-    print("🧠 ОПТИМИЗАЦИЯ НЕЙРОСЕТИ (MLP)")
-    print("=" * 60)
-
     x_train, x_val, y_train, y_val = train_test_split(x, y, test_size=0.2, random_state=42)
 
     study = optuna.create_study(direction='maximize', sampler=optuna.samplers.TPESampler(seed=42))
@@ -181,7 +170,6 @@ def optimize_mlp(x, y, n_trials=50, save_folder=None):
 
 
 def plot_optimization_history(study, model_name, save_folder=None):
-    import matplotlib.pyplot as plt
 
     trials = [t for t in study.trials if t.value is not None]
     values = [t.value for t in trials]
@@ -210,6 +198,4 @@ def plot_optimization_history(study, model_name, save_folder=None):
         save_path = os.path.join(save_folder, f'{model_name.lower()}_optimization_history.png')
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
         print(f"📁 График сохранен: {save_path}")
-
-    plt.show()
     plt.close(fig)

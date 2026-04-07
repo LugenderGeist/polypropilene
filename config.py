@@ -36,17 +36,14 @@ RF_PARAMS = {
 
 # XGBoost параметры
 XGB_PARAMS = {
-    'n_estimators': 200,
-    'max_depth': 6,
-    'learning_rate': 0.05,
-    'subsample': 0.8,
-    'colsample_bytree': 0.8,
-    'min_child_weight': 3,
-    'reg_alpha': 0.1,
-    'reg_lambda': 1.0,
-    'n_jobs': -1,
-    'random_state': 42,
-    'verbosity': 0
+    "n_estimators": 300,
+    "max_depth": 10,
+    "learning_rate": 0.05651254898379137,
+    "subsample": 0.8327847839841903,
+    "colsample_bytree": 0.8016559265627492,
+    "min_child_weight": 3,
+    "reg_alpha": 0.19186616934726605,
+    "reg_lambda": 0.3066518709056766
 }
 
 # Нейросеть (MLP) параметры
@@ -67,7 +64,7 @@ MLP_PARAMS = {
 }
 
 # ============= ПАРАМЕТРЫ ОПТИМИЗАЦИИ =============
-OPTIMIZATION_TOP_FEATURES = 8      # Количество важных признаков (если не выбраны все)
+OPTIMIZATION_TOP_FEATURES = 8
 OPTIMIZATION_POP_SIZE = 50
 OPTIMIZATION_GENERATIONS = 100
 OPTIMIZATION_MUTATION_RATE = 0.1
@@ -93,6 +90,6 @@ GENERATION_USE_TOP_FEATURES = True  # Использовать только ва
 GENERATION_TOP_FEATURES = 8         # Количество важных признаков для генерации (если USE_TOP_FEATURES=True)
 
 # ============= ПАРАМЕТРЫ OPTUNA =============
-OPTUNA_N_TRIALS = 200              # Количество испытаний для оптимизации
-OPTUNA_CV_FOLDS = 5               # Количество фолдов для кросс-валидации
+OPTUNA_N_TRIALS = 500              # Количество испытаний для оптимизации
+OPTUNA_CV_FOLDS = 7               # Количество фолдов для кросс-валидации
 OPTUNA_USE_OPTIMIZED_PARAMS = False  # Использовать оптимизированные параметры (True/False)
