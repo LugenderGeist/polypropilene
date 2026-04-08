@@ -5,7 +5,7 @@
 Для наглядности строятся графики для всех переменных, также строится тепловая карта, на которой видно корреляции между параметрами.  
 
 <div align="center">
-  <img src="./data/examples/all_raw_plots.png" alt="all_raw_plots.png" width="483">
+  <img src="data/examples/all_raw_plots.png" alt="all_raw_plots.png" width="483">
 </div>
 
 <div align="center">
