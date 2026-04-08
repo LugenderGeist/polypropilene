@@ -19,14 +19,14 @@ from preprocessing.window_analysis import (find_best_window, plot_best_window_he
 
 # Импорты из modeling
 from modeling.modeling import (build_random_forest_model, build_xgboost_model,
-                             build_mlp_model, compare_models)
-from modeling.hyperopt import (optimize_random_forest, optimize_xgboost, optimize_mlp,
+                             build_catboost_model, compare_models)
+from modeling.hyperopt import (optimize_random_forest, optimize_xgboost, optimize_catboost,
                                plot_optimization_history, load_best_params_from_json)
 from modeling.optimization import run_optimization
 from modeling.generation import generate_samples
 
 import matplotlib
-matplotlib.use('Agg')
+matplotlib.use('TkAgg')
 
 def create_plots_folder():
     folder_name = f"plots_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
@@ -313,16 +313,16 @@ def main():
             optimized_params['XGBoost'] = best_params
             plot_optimization_history(study, "XGBoost", save_folder=optuna_folder)
 
-        # Оптимизация нейросети
-        mlp_choice = input("\n🧠 Оптимизировать нейросеть? (да/нет): ").strip().lower()
-        if mlp_choice in ['да', 'yes', 'y', 'д']:
+        # Оптимизация CatBoost (исправленный отступ - на одном уровне с XGBoost)
+        cat_choice = input("\n🐱 Оптимизировать CatBoost? (да/нет): ").strip().lower()
+        if cat_choice in ['да', 'yes', 'y', 'д']:
             from config import OPTUNA_N_TRIALS
-            best_params, study = optimize_mlp(
+            best_params, study = optimize_catboost(
                 x_opt, y_opt, n_trials=OPTUNA_N_TRIALS,
                 save_folder=optuna_folder
             )
-            optimized_params['MLP'] = best_params
-            plot_optimization_history(study, "MLP", save_folder=optuna_folder)
+            optimized_params['CatBoost'] = best_params
+            plot_optimization_history(study, "CatBoost", save_folder=optuna_folder)
 
         if optimized_params:
             save_optimized_params_to_json(optimized_params, optuna_folder)
@@ -353,7 +353,6 @@ def main():
     try:
         if use_optimized and 'Random Forest' in optimized_params:
             from config import RF_PARAMS
-            # Временно заменяем параметры
             original_params = RF_PARAMS.copy()
             RF_PARAMS.update(optimized_params['Random Forest'])
             print("\n🌲 Random Forest с оптимизированными параметрами")
@@ -367,7 +366,6 @@ def main():
             models_dict['Random Forest'] = model
 
         if use_optimized and 'Random Forest' in optimized_params:
-            # Восстанавливаем параметры
             RF_PARAMS.clear()
             RF_PARAMS.update(original_params)
     except Exception as e:
@@ -395,27 +393,27 @@ def main():
     except Exception as e:
         print(f"❌ Ошибка XGBoost: {e}")
 
-    # Нейросеть
+    # CatBoost
     try:
-        if use_optimized and 'MLP' in optimized_params:
-            from config import MLP_PARAMS
-            original_params = MLP_PARAMS.copy()
-            MLP_PARAMS.update(optimized_params['MLP'])
-            print("\n🧠 Нейросеть с оптимизированными параметрами")
+        if use_optimized and 'CatBoost' in optimized_params:
+            from config import CATBOOST_PARAMS
+            original_params = CATBOOST_PARAMS.copy()
+            CATBOOST_PARAMS.update(optimized_params['CatBoost'])
+            print("\n🐱 CatBoost с оптимизированными параметрами")
 
-        results, model, _ = build_mlp_model(
+        results, model, _ = build_catboost_model(
             data_for_model, input_columns, output_columns,
             save_folder=modeling_folder
         )
         if results:
-            results_dict['MLP'] = results
-            models_dict['MLP'] = model
+            results_dict['CatBoost'] = results
+            models_dict['CatBoost'] = model
 
-        if use_optimized and 'MLP' in optimized_params:
-            MLP_PARAMS.clear()
-            MLP_PARAMS.update(original_params)
+        if use_optimized and 'CatBoost' in optimized_params:
+            CATBOOST_PARAMS.clear()
+            CATBOOST_PARAMS.update(original_params)
     except Exception as e:
-        print(f"❌ Ошибка нейросети: {e}")
+        print(f"❌ Ошибка CatBoost: {e}")
 
     # Сравнение моделей
     if results_dict:
@@ -526,24 +524,33 @@ def main():
                 selected_model = models_dict[selected_model_name]
                 print(f"\n✅ Для генерации выбрана: {selected_model_name}")
 
-                from config import GENERATION_NUM_SAMPLES, GENERATION_METHOD, GENERATION_USE_TOP_FEATURES, \
-                    GENERATION_TOP_FEATURES
+                from config import GENERATION_NUM_SAMPLES, GENERATION_METHOD
 
                 print(f"\n📊 Параметры генерации (из config.py):")
                 print(f"   - Количество наборов: {GENERATION_NUM_SAMPLES}")
                 print(f"   - Метод: {GENERATION_METHOD}")
-                if GENERATION_USE_TOP_FEATURES:
-                    print(f"   - Используются топ-{GENERATION_TOP_FEATURES} важных признаков")
-                else:
+
+                # Выбор признаков для генерации
+                print("\nВыберите признаки для генерации:")
+                print("  1. Только наиболее важные (из config.py)")
+                print("  2. Все входные параметры")
+
+                feat_choice = input("Ваш выбор (1/2): ").strip()
+                use_all_features = feat_choice == '2'
+
+                if use_all_features:
                     print(f"   - Используются все {len(input_columns)} признаков")
+                    n_features = None
+                else:
+                    from config import GENERATION_TOP_FEATURES
+                    print(f"   - Используются топ-{GENERATION_TOP_FEATURES} важных признаков")
+                    n_features = GENERATION_TOP_FEATURES
 
                 generate_choice = input(f"\nЗапустить генерацию? (да/нет): ").strip().lower()
 
                 if generate_choice in ['да', 'yes', 'y', 'д']:
                     generation_folder = os.path.join(main_plots_folder, '06_generation')
                     os.makedirs(generation_folder, exist_ok=True)
-
-                    n_features = GENERATION_TOP_FEATURES if GENERATION_USE_TOP_FEATURES else None
 
                     inputs_df, predictions_df = generate_samples(
                         df_original=data_for_model,
@@ -566,14 +573,6 @@ def main():
                 else:
                     print("\nГенерация отменена.")
                     continue
-
-            elif action_choice == '3':
-                print("\nЗавершение работы...")
-                break
-
-            else:
-                print("Неверный выбор. Пожалуйста, выберите 1, 2 или 3.")
-                continue
     else:
         print("\n❌ Не удалось обучить ни одну модель!")
 

@@ -1,5 +1,5 @@
 import matplotlib
-matplotlib.use('Agg')
+matplotlib.use('TkAgg')  # Для отображения графиков с границами
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
@@ -8,7 +8,7 @@ import seaborn as sns
 
 
 def plot_raw_data(df, input_columns, output_columns, save_folder=None):
-    """Построение графиков сырых данных без границ"""
+    """Построение графиков сырых данных без границ (только сохранение, без показа)"""
     n_cols = len(df.columns)
     n_rows = (n_cols + 2) // 3
 
@@ -59,13 +59,14 @@ def plot_raw_data(df, input_columns, output_columns, save_folder=None):
         os.makedirs(save_folder, exist_ok=True)
         save_path = os.path.join(save_folder, 'all_raw_plots.png')
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
-        print(f"График сохранен: {save_path}")
+        print(f"✅ Графики сырых данных сохранены в: {save_path}")
 
+    # Только сохраняем, не показываем
     plt.close(fig)
 
 
 def plot_correlation_heatmap(df, input_columns, output_columns, save_folder=None, title="Тепловая карта корреляций"):
-    """Построение тепловой карты корреляций"""
+    """Построение тепловой карты корреляций (только сохранение, без показа)"""
     numeric_df = df.select_dtypes(include=[np.number])
 
     if len(numeric_df.columns) == 0:
@@ -109,27 +110,21 @@ def plot_correlation_heatmap(df, input_columns, output_columns, save_folder=None
         os.makedirs(save_folder, exist_ok=True)
         save_path = os.path.join(save_folder, 'correlation_heatmap.png')
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
-        print(f"Тепловая карта сохранена: {save_path}")
+        print(f"✅ Тепловая карта сохранена в: {save_path}")
 
+    # Только сохраняем, не показываем
     plt.close(fig)
     return corr_matrix
 
 
 def plot_single_column(df, column, data_type, lower_bound=None, upper_bound=None, mean_val=None, save_path=None):
-    """Построение графика для одного столбца"""
-    print(f"\n🔍 Построение графика для столбца: {column}")
-    print(f"   Тип данных: {data_type}")
-    print(f"   Нижняя граница: {lower_bound}")
-    print(f"   Верхняя граница: {upper_bound}")
-    print(f"   Среднее: {mean_val}")
-
+    """Построение графика для одного столбца (показывается при очистке)"""
     fig, ax = plt.subplots(figsize=(12, 6))
 
     color = 'blue' if data_type == 'Входные' else 'red'
 
     try:
         data = pd.to_numeric(df[column], errors='coerce')
-        print(f"   Данные: {len(data)} строк, пропусков: {data.isna().sum()}")
 
         if data.isna().all():
             ax.text(0.5, 0.5, f'Столбец "{column}"\nне содержит числовых данных',
@@ -138,14 +133,11 @@ def plot_single_column(df, column, data_type, lower_bound=None, upper_bound=None
         else:
             if mean_val is None:
                 mean_val = data.mean()
-                print(f"   Вычислено среднее: {mean_val:.4f}")
 
             if lower_bound is None:
                 lower_bound = mean_val * 0.5
-                print(f"   Вычислена нижняя граница: {lower_bound:.4f}")
             if upper_bound is None:
                 upper_bound = mean_val * 1.5
-                print(f"   Вычислена верхняя граница: {upper_bound:.4f}")
 
             ax.plot(df.index, data, color=color, alpha=0.7, linewidth=1.5, marker='.', markersize=2, label='Данные')
             ax.axhline(y=mean_val, color='black', linestyle='--', alpha=0.5, linewidth=1.5,
@@ -175,7 +167,6 @@ def plot_single_column(df, column, data_type, lower_bound=None, upper_bound=None
                     verticalalignment='top', bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
 
     except Exception as e:
-        print(f"   Ошибка: {e}")
         ax.text(0.5, 0.5, f'Ошибка: {str(e)}', ha='center', va='center', transform=ax.transAxes)
         ax.set_title(f'{column}\n({data_type})', fontsize=12, fontweight='bold')
 
@@ -183,8 +174,9 @@ def plot_single_column(df, column, data_type, lower_bound=None, upper_bound=None
 
     if save_path:
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
-        print(f"График сохранен: {save_path}")
+        print(f"✅ График сохранен: {save_path}")
 
+    # Показываем график (нужен при интерактивной настройке)
     plt.show()
     plt.close(fig)
 
@@ -192,7 +184,7 @@ def plot_single_column(df, column, data_type, lower_bound=None, upper_bound=None
 
 
 def plot_all_columns(df, bounds_config, input_columns, output_columns, save_folder=None):
-    """Построение всех графиков с текущими границами"""
+    """Построение всех графиков с текущими границами (показывается)"""
     n_cols = len(df.columns)
     n_rows = (n_cols + 2) // 3
 
@@ -264,13 +256,15 @@ def plot_all_columns(df, bounds_config, input_columns, output_columns, save_fold
         os.makedirs(save_folder, exist_ok=True)
         save_path = os.path.join(save_folder, 'all_plots_current.png')
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
-        print(f"Общий график сохранен: {save_path}")
+        print(f"✅ Общий график сохранен в: {save_path}")
 
+    # Показываем график (нужен при интерактивной настройке)
+    plt.show()
     plt.close(fig)
 
 
 def plot_correlation_with_target(df, target_columns, input_columns, save_folder=None):
-    """Построение графиков корреляции входных признаков с целевыми переменными"""
+    """Построение графиков корреляции входных признаков с целевыми переменными (только сохранение)"""
     numeric_df = df.select_dtypes(include=[np.number])
 
     for target in target_columns:
@@ -317,6 +311,7 @@ def plot_correlation_with_target(df, target_columns, input_columns, save_folder=
             safe_name = target.replace('/', '_').replace('\\', '_').replace(':', '_')
             save_path = os.path.join(save_folder, f'correlation_with_{safe_name}.png')
             plt.savefig(save_path, dpi=300, bbox_inches='tight')
-            print(f"График корреляций для {target} сохранен: {save_path}")
+            print(f"✅ График корреляций для {target} сохранен в: {save_path}")
 
+        # Только сохраняем, не показываем
         plt.close(fig)

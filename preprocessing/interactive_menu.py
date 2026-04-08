@@ -64,6 +64,7 @@ def interactive_bounds_adjustment(df, all_columns, input_columns, output_columns
             # Проверяем, не выбран ли пункт "Показать все графики"
             if idx == len(all_columns):
                 print("\nПоказываю все графики с текущими границами...")
+                # Используем актуальный bounds_config
                 plot_all_columns(df, bounds_config, input_columns, output_columns, adjusted_folder)
                 continue
 

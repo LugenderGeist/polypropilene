@@ -7,18 +7,15 @@ import matplotlib.pyplot as plt
 import os
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.neural_network import MLPRegressor
-from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error
 import xgboost as xgb
+import catboost as cb
 import warnings
-from config import (TEST_SIZE, RANDOM_STATE, RF_PARAMS, XGB_PARAMS, MLP_PARAMS, TOP_FEATURES_TO_SHOW)
+from config import TEST_SIZE, RANDOM_STATE, RF_PARAMS, XGB_PARAMS, CATBOOST_PARAMS, TOP_FEATURES_TO_SHOW
 
 warnings.filterwarnings('ignore')
 plt.ioff()
 
-from modeling.hyperopt import optimize_random_forest, optimize_xgboost, optimize_mlp, plot_optimization_history
-from config import OPTUNA_N_TRIALS, OPTUNA_CV_FOLDS, OPTUNA_USE_OPTIMIZED_PARAMS
 
 def _prepare_data(df, input_columns, output_columns):
     """Подготовка данных для обучения"""
@@ -143,14 +140,7 @@ def build_random_forest_model(df, input_columns, output_columns, save_folder=Non
     X, y, target = _prepare_data(df, input_columns, output_columns)
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=TEST_SIZE, random_state=RANDOM_STATE)
 
-    # Получаем параметры из конфига
-    rf_params = RF_PARAMS.copy()
-
-    # Проверка: если bootstrap=False, то oob_score должен быть False
-    if not rf_params.get('bootstrap', True):
-        rf_params['oob_score'] = False
-
-    model = RandomForestRegressor(**rf_params)
+    model = RandomForestRegressor(**RF_PARAMS)
     model.fit(X_train, y_train)
 
     y_train_pred = model.predict(X_train)
@@ -235,18 +225,13 @@ def build_xgboost_model(df, input_columns, output_columns, save_folder=None):
     return results, model, feature_importance
 
 
-def build_mlp_model(df, input_columns, output_columns, save_folder=None):
-    """Нейросеть MLP"""
+def build_catboost_model(df, input_columns, output_columns, save_folder=None):
+    """CatBoost"""
     X, y, target = _prepare_data(df, input_columns, output_columns)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=TEST_SIZE, random_state=RANDOM_STATE)
 
-    # Нормализация для нейросети
-    scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X)
-
-    X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=TEST_SIZE, random_state=RANDOM_STATE)
-
-    model = MLPRegressor(**MLP_PARAMS)
-    model.fit(X_train, y_train)
+    model = cb.CatBoostRegressor(**CATBOOST_PARAMS)
+    model.fit(X_train, y_train, verbose=False, plot=False)
 
     y_train_pred = model.predict(X_train)
     y_test_pred = model.predict(X_test)
@@ -254,18 +239,17 @@ def build_mlp_model(df, input_columns, output_columns, save_folder=None):
     r2_train = r2_score(y_train, y_train_pred)
     r2_test = r2_score(y_test, y_test_pred)
 
-    _print_metrics("🧠 НЕЙРОСЕТЬ (MLP)", r2_train, r2_test)
+    _print_metrics("🐱 CATBOOST", r2_train, r2_test)
 
-    # Для нейросети - используем средние абсолютные веса первого слоя
     feature_importance = pd.DataFrame({
         'feature': input_columns,
-        'importance': np.abs(model.coefs_[0]).mean(axis=1)
+        'importance': model.feature_importances_
     }).sort_values('importance', ascending=False)
 
     _print_top_features(feature_importance, input_columns, TOP_FEATURES_TO_SHOW)
 
     results = {
-        'model_type': 'mlp',
+        'model_type': 'catboost',
         'r2_train': r2_train, 'r2_test': r2_test,
         'rmse_train': np.sqrt(mean_squared_error(y_train, y_train_pred)),
         'rmse_test': np.sqrt(mean_squared_error(y_test, y_test_pred)),
@@ -275,14 +259,13 @@ def build_mlp_model(df, input_columns, output_columns, save_folder=None):
         'target': target,
         'y_test': y_test, 'y_test_pred': y_test_pred,
         'y_train': y_train, 'y_train_pred': y_train_pred,
-        'model_params': MLP_PARAMS,
-        'n_train': len(X_train), 'n_test': len(X_test),
-        'n_iter': model.n_iter_
+        'model_params': CATBOOST_PARAMS,
+        'n_train': len(X_train), 'n_test': len(X_test)
     }
 
     if save_folder:
-        _save_plots(results, feature_importance, save_folder, "MLP")
-        _save_report(results, feature_importance, save_folder, "MLP")
+        _save_plots(results, feature_importance, save_folder, "CatBoost")
+        _save_report(results, feature_importance, save_folder, "CatBoost")
 
     return results, model, feature_importance
 
