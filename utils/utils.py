@@ -14,7 +14,6 @@ def detect_encoding(file_path):
 
 # Функция для преобразования всех столбцов в числовой формат
 def convert_to_numeric(df):
-    """Преобразует все столбцы DataFrame в числовой формат где возможно"""
     df_numeric = df.copy()
     for col in df_numeric.columns:
         df_numeric[col] = pd.to_numeric(df_numeric[col], errors='coerce')
@@ -23,13 +22,11 @@ def convert_to_numeric(df):
 
 # Функция для загрузки данных с определением кодировки
 def load_data(file_path):
-    """Загружает данные из CSV файла с автоматическим определением кодировки"""
     try:
         encoding = detect_encoding(file_path)
         print(f"Определенная кодировка файла: {encoding}")
         df = pd.read_csv(file_path, encoding=encoding)
 
-        # Преобразуем все столбцы в числовой формат
         df = convert_to_numeric(df)
 
         print("Файл успешно загружен и преобразован в числовой формат!")
@@ -53,28 +50,10 @@ def load_data(file_path):
 
 # Функция для создания папки для графиков
 def create_plots_folder():
-    """Создает папку для сохранения графиков"""
     folder_name = f"plots_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
     if not os.path.exists(folder_name):
         os.makedirs(folder_name)
     return folder_name
-
-
-# Функция для сохранения конфигурации границ
-def save_bounds_config(bounds_config, save_folder):
-    """Сохраняет конфигурацию границ в текстовый файл"""
-    config_file = os.path.join(save_folder, 'bounds_config.txt')
-    with open(config_file, 'w', encoding='utf-8') as f:
-        f.write("Конфигурация границ для столбцов\n")
-        f.write(f"Дата и время: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-        f.write("=" * 50 + "\n\n")
-        for col, config in bounds_config.items():
-            f.write(f"{col} ({config['data_type']}):\n")
-            f.write(f"  Среднее: {config['mean']:.6f}\n")
-            f.write(f"  Нижняя граница: {config['lower']:.6f}\n")
-            f.write(f"  Верхняя граница: {config['upper']:.6f}\n\n")
-    return config_file
-
 
 # Функция для настройки входных и выходных столбцов
 def setup_columns(df):

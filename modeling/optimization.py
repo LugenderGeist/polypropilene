@@ -10,7 +10,6 @@ from config import (OPTIMIZATION_POP_SIZE, OPTIMIZATION_GENERATIONS,
 
 warnings.filterwarnings('ignore')
 
-
 class GeneticOptimizer:
     def __init__(self, model, input_columns, scaler=None,
                  pop_size=None, generations=None, mutation_rate=None,
@@ -31,7 +30,6 @@ class GeneticOptimizer:
         self.bounds = {}
 
     def set_bounds_from_data(self, df, input_columns):
-        """Устанавливает границы на основе реальных данных"""
         for col in input_columns:
             data = df[col].dropna()
             self.bounds[col] = {
@@ -198,7 +196,6 @@ def run_optimization(df_original, model, input_columns, output_columns,
 
     # ============= ВЫБОР ВАЖНЫХ ПРИЗНАКОВ =============
     feature_importance = None
-
     if hasattr(model, 'feature_importances_'):
         feature_importance = model.feature_importances_
         print("\n📊 Используется важность признаков из модели")
@@ -251,7 +248,6 @@ def run_optimization(df_original, model, input_columns, output_columns,
         for col, val in fixed_params.items():
             print(f"   {col}: {val:.4f}")
 
-    # Модифицируем метод evaluate_fitness
     def evaluate_with_fixed(individual):
         full_params = fixed_params.copy()
         full_params.update(individual)
@@ -275,14 +271,12 @@ def run_optimization(df_original, model, input_columns, output_columns,
 
     result = optimizer.run(verbose=True)
 
-    # ============= ВИЗУАЛИЗАЦИЯ И СОХРАНЕНИЕ =============
     if save_folder:
         plot_optimization_results(result, optimizer.bounds, optimize_features,
                                   target, save_folder)
         save_optimization_results(result, optimize_features, target, save_folder)
 
     return result
-
 
 def plot_optimization_results(result, bounds, optimize_features, target, save_folder=None):
     # 1. История оптимизации (график сходимости)
@@ -309,7 +303,6 @@ def plot_optimization_results(result, bounds, optimize_features, target, save_fo
     param_names = list(best_individual.keys())
     param_values = list(best_individual.values())
 
-    # Нормализуем значения для цветовой шкалы
     colors = []
     for col in param_names:
         min_val = bounds[col]['min']
@@ -319,7 +312,6 @@ def plot_optimization_results(result, bounds, optimize_features, target, save_fo
 
     bars = ax2.barh(range(len(param_values)), param_values, color=colors, alpha=0.8, edgecolor='black', linewidth=0.5)
 
-    # Добавляем значения на бары
     for i, (bar, value, col) in enumerate(zip(bars, param_values, param_names)):
         ax2.text(value + (bounds[col]['max'] - bounds[col]['min']) * 0.02,
                  bar.get_y() + bar.get_height() / 2,

@@ -5,8 +5,6 @@ from preprocessing.outlier_filter import apply_outlier_filter, visualize_outlier
 
 
 def interactive_bounds_adjustment(df, all_columns, input_columns, output_columns, save_folder):
-    """Интерактивное изменение границ для каждого столбца"""
-
     # Инициализация конфигурации границ
     bounds_config = {}
     for col in all_columns:
@@ -49,19 +47,15 @@ def interactive_bounds_adjustment(df, all_columns, input_columns, output_columns
                       f"Верхняя: {config['upper']:.4f}, "
                       f"Среднее: {config['mean']:.4f}")
 
-        # Выводим пункт "Показать все графики" перед завершением
         print(f"\n{len(all_columns) + 1}. Показать все графики с текущими настройками")
         print(f"0. Завершить настройку и показать финальные графики")
 
-        # Выбор столбца
         try:
             choice = input("\nВыберите номер столбца для настройки (0 для выхода): ").strip()
             if choice == '0':
                 break
 
             idx = int(choice) - 1
-
-            # Проверяем, не выбран ли пункт "Показать все графики"
             if idx == len(all_columns):
                 print("\nПоказываю все графики с текущими границами...")
                 # Используем актуальный bounds_config
@@ -172,11 +166,9 @@ def interactive_bounds_adjustment(df, all_columns, input_columns, output_columns
                             print("Неверный выбор метода")
                             continue
 
-                        # Визуализируем результат фильтрации
                         visualize_outlier_filter(df, col, filtered_data, outlier_mask, bounds, stats,
                                                  save_folder=filter_folder)
 
-                        # Спрашиваем, применить ли фильтр
                         apply_filter = input("\nПрименить этот фильтр и обновить границы? (да/нет): ").strip().lower()
                         if apply_filter in ['да', 'yes', 'y', 'д']:
                             if bounds is not None:
@@ -212,16 +204,12 @@ def interactive_bounds_adjustment(df, all_columns, input_columns, output_columns
 
                 elif action == '5':
                     continue
-
                 else:
                     print("Неверный выбор")
-
             else:
                 print("Неверный номер столбца")
-
         except ValueError:
             print("Ошибка: введите номер столбца")
         except Exception as e:
             print(f"Ошибка: {e}")
-
     return bounds_config

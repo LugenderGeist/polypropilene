@@ -1,7 +1,3 @@
-"""
-Предобработка данных
-"""
-
 from .interactive_menu import interactive_bounds_adjustment
 from .outlier_filter import apply_outlier_filter, visualize_outlier_filter
 from .window_analysis import (

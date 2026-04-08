@@ -8,7 +8,6 @@ import seaborn as sns
 
 
 def plot_raw_data(df, input_columns, output_columns, save_folder=None):
-    """Построение графиков сырых данных без границ (только сохранение, без показа)"""
     n_cols = len(df.columns)
     n_rows = (n_cols + 2) // 3
 
@@ -66,7 +65,6 @@ def plot_raw_data(df, input_columns, output_columns, save_folder=None):
 
 
 def plot_correlation_heatmap(df, input_columns, output_columns, save_folder=None, title="Тепловая карта корреляций"):
-    """Построение тепловой карты корреляций (только сохранение, без показа)"""
     numeric_df = df.select_dtypes(include=[np.number])
 
     if len(numeric_df.columns) == 0:
@@ -118,7 +116,6 @@ def plot_correlation_heatmap(df, input_columns, output_columns, save_folder=None
 
 
 def plot_single_column(df, column, data_type, lower_bound=None, upper_bound=None, mean_val=None, save_path=None):
-    """Построение графика для одного столбца (показывается при очистке)"""
     fig, ax = plt.subplots(figsize=(12, 6))
 
     color = 'blue' if data_type == 'Входные' else 'red'
@@ -176,7 +173,6 @@ def plot_single_column(df, column, data_type, lower_bound=None, upper_bound=None
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
         print(f"✅ График сохранен: {save_path}")
 
-    # Показываем график (нужен при интерактивной настройке)
     plt.show()
     plt.close(fig)
 
@@ -184,7 +180,6 @@ def plot_single_column(df, column, data_type, lower_bound=None, upper_bound=None
 
 
 def plot_all_columns(df, bounds_config, input_columns, output_columns, save_folder=None):
-    """Построение всех графиков с текущими границами (показывается)"""
     n_cols = len(df.columns)
     n_rows = (n_cols + 2) // 3
 
@@ -258,13 +253,11 @@ def plot_all_columns(df, bounds_config, input_columns, output_columns, save_fold
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
         print(f"✅ Общий график сохранен в: {save_path}")
 
-    # Показываем график (нужен при интерактивной настройке)
     plt.show()
     plt.close(fig)
 
 
 def plot_correlation_with_target(df, target_columns, input_columns, save_folder=None):
-    """Построение графиков корреляции входных признаков с целевыми переменными (только сохранение)"""
     numeric_df = df.select_dtypes(include=[np.number])
 
     for target in target_columns:
@@ -313,5 +306,4 @@ def plot_correlation_with_target(df, target_columns, input_columns, save_folder=
             plt.savefig(save_path, dpi=300, bbox_inches='tight')
             print(f"✅ График корреляций для {target} сохранен в: {save_path}")
 
-        # Только сохраняем, не показываем
         plt.close(fig)

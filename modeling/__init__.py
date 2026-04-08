@@ -1,7 +1,3 @@
-"""
-Моделирование и оптимизация
-"""
-
 from .modeling import (
     build_random_forest_model,
     build_xgboost_model,

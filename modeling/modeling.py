@@ -20,13 +20,13 @@ plt.ioff()
 def _prepare_data(df, input_columns, output_columns):
     """Подготовка данных для обучения"""
     target = output_columns[0]
-    X = df[input_columns].copy()
+    x = df[input_columns].copy()
     y = df[target].copy()
 
-    X = X.fillna(X.mean())
+    x = x.fillna(x.mean())
     y = y.fillna(y.mean())
 
-    return X, y, target
+    return x, y, target
 
 
 def _print_metrics(model_name, r2_train, r2_test):
@@ -137,14 +137,14 @@ def _save_report(results, feature_importance, save_folder, model_name):
 
 def build_random_forest_model(df, input_columns, output_columns, save_folder=None):
     """Random Forest"""
-    X, y, target = _prepare_data(df, input_columns, output_columns)
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=TEST_SIZE, random_state=RANDOM_STATE)
+    x, y, target = _prepare_data(df, input_columns, output_columns)
+    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=TEST_SIZE, random_state=RANDOM_STATE)
 
     model = RandomForestRegressor(**RF_PARAMS)
-    model.fit(X_train, y_train)
+    model.fit(x_train, y_train)
 
-    y_train_pred = model.predict(X_train)
-    y_test_pred = model.predict(X_test)
+    y_train_pred = model.predict(x_train)
+    y_test_pred = model.predict(x_test)
 
     r2_train = r2_score(y_train, y_train_pred)
     r2_test = r2_score(y_test, y_test_pred)
@@ -170,7 +170,7 @@ def build_random_forest_model(df, input_columns, output_columns, save_folder=Non
         'y_test': y_test, 'y_test_pred': y_test_pred,
         'y_train': y_train, 'y_train_pred': y_train_pred,
         'model_params': RF_PARAMS,
-        'n_train': len(X_train), 'n_test': len(X_test)
+        'n_train': len(x_train), 'n_test': len(x_test)
     }
 
     if save_folder:
@@ -182,14 +182,14 @@ def build_random_forest_model(df, input_columns, output_columns, save_folder=Non
 
 def build_xgboost_model(df, input_columns, output_columns, save_folder=None):
     """XGBoost"""
-    X, y, target = _prepare_data(df, input_columns, output_columns)
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=TEST_SIZE, random_state=RANDOM_STATE)
+    x, y, target = _prepare_data(df, input_columns, output_columns)
+    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=TEST_SIZE, random_state=RANDOM_STATE)
 
     model = xgb.XGBRegressor(**XGB_PARAMS)
-    model.fit(X_train, y_train, verbose=False)
+    model.fit(x_train, y_train, verbose=False)
 
-    y_train_pred = model.predict(X_train)
-    y_test_pred = model.predict(X_test)
+    y_train_pred = model.predict(x_train)
+    y_test_pred = model.predict(x_test)
 
     r2_train = r2_score(y_train, y_train_pred)
     r2_test = r2_score(y_test, y_test_pred)
@@ -215,7 +215,7 @@ def build_xgboost_model(df, input_columns, output_columns, save_folder=None):
         'y_test': y_test, 'y_test_pred': y_test_pred,
         'y_train': y_train, 'y_train_pred': y_train_pred,
         'model_params': XGB_PARAMS,
-        'n_train': len(X_train), 'n_test': len(X_test)
+        'n_train': len(x_train), 'n_test': len(x_test)
     }
 
     if save_folder:
@@ -227,14 +227,14 @@ def build_xgboost_model(df, input_columns, output_columns, save_folder=None):
 
 def build_catboost_model(df, input_columns, output_columns, save_folder=None):
     """CatBoost"""
-    X, y, target = _prepare_data(df, input_columns, output_columns)
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=TEST_SIZE, random_state=RANDOM_STATE)
+    x, y, target = _prepare_data(df, input_columns, output_columns)
+    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=TEST_SIZE, random_state=RANDOM_STATE)
 
     model = cb.CatBoostRegressor(**CATBOOST_PARAMS)
-    model.fit(X_train, y_train, verbose=False, plot=False)
+    model.fit(x_train, y_train, verbose=False, plot=False)
 
-    y_train_pred = model.predict(X_train)
-    y_test_pred = model.predict(X_test)
+    y_train_pred = model.predict(x_train)
+    y_test_pred = model.predict(x_test)
 
     r2_train = r2_score(y_train, y_train_pred)
     r2_test = r2_score(y_test, y_test_pred)
@@ -260,7 +260,7 @@ def build_catboost_model(df, input_columns, output_columns, save_folder=None):
         'y_test': y_test, 'y_test_pred': y_test_pred,
         'y_train': y_train, 'y_train_pred': y_train_pred,
         'model_params': CATBOOST_PARAMS,
-        'n_train': len(X_train), 'n_test': len(X_test)
+        'n_train': len(x_train), 'n_test': len(x_test)
     }
 
     if save_folder:

@@ -9,18 +9,13 @@ from sklearn.metrics import r2_score
 import xgboost as xgb
 import catboost as cb
 import warnings
-
-# Отключаем графический бэкенд
 import matplotlib
-
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 warnings.filterwarnings('ignore')
 
-
 def save_best_params_to_json(best_params, model_name, save_folder):
-    """Сохраняет лучшие параметры в JSON файл"""
     os.makedirs(save_folder, exist_ok=True)
     json_path = os.path.join(save_folder, f'{model_name.lower()}_best_params.json')
 
@@ -51,7 +46,7 @@ def load_best_params_from_json(model_name, save_folder):
         print(f"⚠️ Файл с параметрами не найден: {json_path}")
         return None
 
-def objective_rf_cv(trial, X, y, cv_folds=5):
+def objective_rf_cv(trial, x, y, cv_folds=5):
     params = {
         'n_estimators': trial.suggest_int('n_estimators', 50, 300, step=50),
         'max_depth': trial.suggest_int('max_depth', 3, 15),
@@ -63,17 +58,17 @@ def objective_rf_cv(trial, X, y, cv_folds=5):
         'n_jobs': -1
     }
     model = RandomForestRegressor(**params)
-    scores = cross_val_score(model, X, y, cv=cv_folds, scoring='r2')
+    scores = cross_val_score(model, x, y, cv=cv_folds, scoring='r2')
     return scores.mean()
 
 
-def optimize_random_forest(X, y, n_trials=50, cv_folds=5, save_folder=None):
+def optimize_random_forest(x, y, n_trials=50, cv_folds=5, save_folder=None):
     print("\n" + "=" * 60)
     print("🌲 ОПТИМИЗАЦИЯ RANDOM FOREST")
     print("=" * 60)
 
     study = optuna.create_study(direction='maximize', sampler=optuna.samplers.TPESampler(seed=42))
-    study.optimize(lambda trial: objective_rf_cv(trial, X, y, cv_folds), n_trials=n_trials, show_progress_bar=True)
+    study.optimize(lambda trial: objective_rf_cv(trial, x, y, cv_folds), n_trials=n_trials, show_progress_bar=True)
 
     best_params = study.best_params
     best_score = study.best_value
@@ -88,7 +83,7 @@ def optimize_random_forest(X, y, n_trials=50, cv_folds=5, save_folder=None):
     return best_params, study
 
 
-def objective_xgb(trial, X_train, y_train, X_val, y_val):
+def objective_xgb(trial, x_train, y_train, x_val, y_val):
     params = {
         'n_estimators': trial.suggest_int('n_estimators', 50, 300, step=50),
         'max_depth': trial.suggest_int('max_depth', 3, 10),
@@ -103,17 +98,17 @@ def objective_xgb(trial, X_train, y_train, X_val, y_val):
         'verbosity': 0
     }
     model = xgb.XGBRegressor(**params)
-    model.fit(X_train, y_train, verbose=False)
-    y_pred = model.predict(X_val)
+    model.fit(x_train, y_train, verbose=False)
+    y_pred = model.predict(x_val)
     return r2_score(y_val, y_pred)
 
 
-def optimize_xgboost(X, y, n_trials=50, save_folder=None):
+def optimize_xgboost(x, y, n_trials=50, save_folder=None):
     print("\n" + "=" * 60)
     print("🚀 ОПТИМИЗАЦИЯ XGBOOST")
     print("=" * 60)
 
-    X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_val, y_train, y_val = train_test_split(x, y, test_size=0.2, random_state=42)
 
     study = optuna.create_study(direction='maximize', sampler=optuna.samplers.TPESampler(seed=42))
     study.optimize(lambda trial: objective_xgb(trial, X_train, y_train, X_val, y_val),
@@ -132,7 +127,7 @@ def optimize_xgboost(X, y, n_trials=50, save_folder=None):
     return best_params, study
 
 
-def objective_catboost(trial, X_train, y_train, X_val, y_val):
+def objective_catboost(trial, x_train, y_train, x_val, y_val):
     params = {
         'iterations': trial.suggest_int('iterations', 100, 500, step=50),
         'depth': trial.suggest_int('depth', 3, 10),
@@ -141,19 +136,19 @@ def objective_catboost(trial, X_train, y_train, X_val, y_val):
         'random_seed': 42
     }
     model = cb.CatBoostRegressor(**params, verbose=False)
-    model.fit(X_train, y_train, verbose=False, plot=False)
-    y_pred = model.predict(X_val)
+    model.fit(x_train, y_train, verbose=False, plot=False)
+    y_pred = model.predict(x_val)
     return r2_score(y_val, y_pred)
 
-def optimize_catboost(X, y, n_trials=50, save_folder=None):
+def optimize_catboost(x, y, n_trials=50, save_folder=None):
     print("\n" + "="*60)
     print("🐱 ОПТИМИЗАЦИЯ CATBOOST")
     print("="*60)
 
-    X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
+    x_train, x_val, y_train, y_val = train_test_split(x, y, test_size=0.2, random_state=42)
 
     study = optuna.create_study(direction='maximize', sampler=optuna.samplers.TPESampler(seed=42))
-    study.optimize(lambda trial: objective_catboost(trial, X_train, y_train, X_val, y_val),
+    study.optimize(lambda trial: objective_catboost(trial, x_train, y_train, x_val, y_val),
                    n_trials=n_trials, show_progress_bar=True)
 
     best_params = study.best_params
@@ -169,7 +164,6 @@ def optimize_catboost(X, y, n_trials=50, save_folder=None):
     return best_params, study
 
 def plot_optimization_history(study, model_name, save_folder=None):
-    """Визуализация истории оптимизации"""
     trials = [t for t in study.trials if t.value is not None]
     values = [t.value for t in trials]
     numbers = [t.number for t in trials]

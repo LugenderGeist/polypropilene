@@ -1,12 +1,7 @@
-"""
-Утилиты для загрузки данных и визуализации
-"""
-
 from .utils import (
     load_data,
     create_plots_folder,
     setup_columns,
-    save_bounds_config,
     remove_outliers,
     save_cleaned_data,
     detect_encoding,
@@ -26,7 +21,6 @@ __all__ = [
     'load_data',
     'create_plots_folder',
     'setup_columns',
-    'save_bounds_config',
     'remove_outliers',
     'save_cleaned_data',
     'detect_encoding',

@@ -7,7 +7,7 @@ from datetime import datetime
 from config import RESULTS_DIR, INPUT_FILE, MIN_WINDOW_SIZE, DEFAULT_BOUNDS_PERCENT
 
 # Импорты из utils
-from utils.utils import (load_data, setup_columns, save_bounds_config,
+from utils.utils import (load_data, setup_columns,
                               remove_outliers, save_cleaned_data)
 from utils.visualization import (plot_all_columns, plot_raw_data,
                                        plot_correlation_heatmap)
@@ -84,7 +84,7 @@ def main():
     original_csv_path = os.path.join(raw_data_folder, 'original_data.csv')
     df.to_csv(original_csv_path, index=False, encoding='utf-8-sig')
 
-    # ============= 2. ВЫБОР РЕЖИМА РАБОТЫ =============
+    # ============= ВЫБОР РЕЖИМА РАБОТЫ =============
     print("\n" + "=" * 80)
     print("2. ВЫБОР РЕЖИМА РАБОТЫ")
     print("=" * 80)
@@ -100,7 +100,7 @@ def main():
     processed_data_folder = None
 
     if mode_choice == '1':
-        # ============= ПОЛНЫЙ РЕЖИМ: ОБРАБОТКА ДАННЫХ =============
+        # ============= ОБРАБОТКА ДАННЫХ =============
         print("\n" + "=" * 80)
         print("ОБРАБОТКА ДАННЫХ")
         print("=" * 80)
@@ -218,7 +218,7 @@ def main():
             except:
                 pass
 
-    # ============= 3. ПОИСК ЛУЧШЕГО ОКНА =============
+    # ============= ПОИСК ЛУЧШЕГО ОКНА =============
     print("\n" + "=" * 80)
     print("3. ПОИСК ЛУЧШЕГО ОКНА ДАННЫХ")
     print("=" * 80)
@@ -257,7 +257,7 @@ def main():
     else:
         print("\nПоиск лучшего окна пропущен.")
 
-    # ============= 4. ОПТИМИЗАЦИЯ ГИПЕРПАРАМЕТРОВ =============
+    # ============= ОПТИМИЗАЦИЯ ГИПЕРПАРАМЕТРОВ =============
     modeling_folder = os.path.join(main_plots_folder, '04_modeling_results')
     os.makedirs(modeling_folder, exist_ok=True)
 
@@ -331,7 +331,7 @@ def main():
     else:
         print("\nОптимизация гиперпараметров пропущена.")
 
-    # ============= 5. ОБУЧЕНИЕ МОДЕЛЕЙ =============
+    # ============= ОБУЧЕНИЕ МОДЕЛЕЙ =============
     print("\n" + "=" * 80)
     print("ОБУЧЕНИЕ МОДЕЛЕЙ")
     print("=" * 80)
@@ -419,7 +419,7 @@ def main():
     if results_dict:
         best_model_name, best_r2 = compare_models(results_dict, save_folder=modeling_folder)
 
-        # ============= 6. ЦИКЛ ВЫБОРА ДЕЙСТВИЯ =============
+        # ============= ЦИКЛ ВЫБОРА ДЕЙСТВИЯ =============
         while True:
             print("\n" + "=" * 80)
             print("ВЫБОР ДЕЙСТВИЯ")

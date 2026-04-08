@@ -63,19 +63,6 @@ def detect_outliers_savgol(data, window_length=21, polyorder=3, threshold=3):
 
 
 def apply_outlier_filter(df, column, method='iqr', **kwargs):
-    """
-    Применение фильтра выбросов к столбцу
-
-    Parameters:
-    - df: DataFrame
-    - column: имя столбца
-    - method: метод фильтрации
-        'iqr' - межквартильный размах
-        'mad' - медианное абсолютное отклонение
-        'derivative' - производная (резкие скачки)
-        'peak' - поиск пиков
-        'savgol' - фильтр Савицкого-Голая
-    """
     data = pd.to_numeric(df[column], errors='coerce')
     original_count = len(data)
     original_mean = data.mean()
@@ -140,11 +127,7 @@ def apply_outlier_filter(df, column, method='iqr', **kwargs):
 
 
 def visualize_outlier_filter(df, column, filtered_data, outlier_mask, bounds, stats, save_folder=None):
-    """
-    Визуализация результата фильтрации выбросов
-    """
     fig, axes = plt.subplots(2, 2, figsize=(14, 10))
-
     data = pd.to_numeric(df[column], errors='coerce')
 
     # 1. Исходные данные с выделением выбросов
@@ -154,7 +137,6 @@ def visualize_outlier_filter(df, column, filtered_data, outlier_mask, bounds, st
     if outlier_mask.sum() > 0:
         ax1.scatter(df.index[outlier_mask], data[outlier_mask],
                     color='red', s=50, label=f'Выбросы ({stats["outlier_count"]})', zorder=5)
-
     if bounds:
         ax1.axhline(y=bounds[0], color='orange', linestyle='--', alpha=0.7, label=f'Нижняя граница = {bounds[0]:.4f}')
         ax1.axhline(y=bounds[1], color='orange', linestyle='--', alpha=0.7, label=f'Верхняя граница = {bounds[1]:.4f}')

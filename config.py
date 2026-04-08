@@ -1,25 +1,39 @@
 import os
 
-# ============= ПУТИ К ФАЙЛАМ =============
+# Путь к файлу
 INPUT_FILE = 'data/ПП.csv'
 
 # Создаем папку results, если её нет
 RESULTS_DIR = "results"
 os.makedirs(RESULTS_DIR, exist_ok=True)
 
-# ============= ПАРАМЕТРЫ ЗАГРУЗКИ =============
+# Параметры загрузки файла
 ENCODINGS_TO_TRY = ['cp1251', 'windows-1251', 'cp1252', 'latin1', 'iso-8859-1', 'utf-8-sig']
 
-# ============= ПАРАМЕТРЫ ГРАНИЦ (по умолчанию) =============
+# Начальные границы для фильтра
 DEFAULT_BOUNDS_PERCENT = 50
 
-# ============= ПАРАМЕТРЫ ПОИСКА ОКНА =============
+# Параметры фильтров для данных
+IQR_MULTIPLIER = 1.5
+MAD_THRESHOLD = 3.5
+DERIVATIVE_MULTIPLIER = 5
+PEAK_PROMINENCE = 0.5
+PEAK_DISTANCE = 10
+SAVGOL_WINDOW = 21
+SAVGOL_POLYORDER = 3
+
+# Размер скользящего окна
 MIN_WINDOW_SIZE = 2000
 
-# ============= ПАРАМЕТРЫ МОДЕЛЕЙ =============
+# Подбор гиперпараметров
+OPTUNA_N_TRIALS = 500              # Количество испытаний для оптимизации
+OPTUNA_CV_FOLDS = 7               # Количество фолдов для кросс-валидации
+OPTUNA_USE_OPTIMIZED_PARAMS = False  # Использовать оптимизированные параметры (True/False)
+
+# Настройка моделей
 TEST_SIZE = 0.2
 RANDOM_STATE = 42
-TOP_FEATURES_TO_SHOW = 10  # Количество важных признаков для вывода в терминал
+TOP_FEATURES_TO_SHOW = 10
 
 # Random Forest параметры
 RF_PARAMS = {
@@ -28,8 +42,8 @@ RF_PARAMS = {
     'min_samples_split': 10,
     'min_samples_leaf': 5,
     'max_features': 'sqrt',
-    'bootstrap': True,      # bootstrap должен быть True для oob_score
-    'oob_score': True,      # out-of-bag оценка
+    'bootstrap': True,
+    'oob_score': True,
     'n_jobs': -1,
     'random_state': 42
 }
@@ -56,7 +70,7 @@ CATBOOST_PARAMS = {
     'verbose': False
 }
 
-# ============= ПАРАМЕТРЫ ОПТИМИЗАЦИИ =============
+# Параметры генетического алгоритма
 OPTIMIZATION_TOP_FEATURES = 8
 OPTIMIZATION_POP_SIZE = 50
 OPTIMIZATION_GENERATIONS = 100
@@ -64,25 +78,8 @@ OPTIMIZATION_MUTATION_RATE = 0.1
 OPTIMIZATION_CROSSOVER_RATE = 0.7
 OPTIMIZATION_ELITISM = 2
 
-# ============= ПАРАМЕТРЫ ВИЗУАЛИЗАЦИИ =============
-FIGURE_DPI = 300
-
-# ============= ПАРАМЕТРЫ ФИЛЬТРАЦИИ =============
-IQR_MULTIPLIER = 1.5
-MAD_THRESHOLD = 3.5
-DERIVATIVE_MULTIPLIER = 5
-PEAK_PROMINENCE = 0.5
-PEAK_DISTANCE = 10
-SAVGOL_WINDOW = 21
-SAVGOL_POLYORDER = 3
-
-# ============= ПАРАМЕТРЫ ГЕНЕРАЦИИ НАБОРОВ =============
+# Генерация сценариев
 GENERATION_NUM_SAMPLES = 100        # Количество генерируемых наборов
 GENERATION_METHOD = 'latin'         # Метод генерации: 'random', 'latin', 'grid'
 GENERATION_USE_TOP_FEATURES = True  # Использовать только важные признаки (True) или все (False)
 GENERATION_TOP_FEATURES = 8         # Количество важных признаков для генерации (если USE_TOP_FEATURES=True)
-
-# ============= ПАРАМЕТРЫ OPTUNA =============
-OPTUNA_N_TRIALS = 500              # Количество испытаний для оптимизации
-OPTUNA_CV_FOLDS = 7               # Количество фолдов для кросс-валидации
-OPTUNA_USE_OPTIMIZED_PARAMS = False  # Использовать оптимизированные параметры (True/False)
