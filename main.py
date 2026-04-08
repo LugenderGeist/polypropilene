@@ -10,8 +10,9 @@ from config import RESULTS_DIR, INPUT_FILE, MIN_WINDOW_SIZE, DEFAULT_BOUNDS_PERC
 from utils.utils import (load_data, setup_columns,
                               remove_outliers, save_cleaned_data)
 from utils.visualization import (plot_all_columns, plot_raw_data,
-                                       plot_correlation_heatmap)
-
+                                 plot_correlation_heatmap,
+                                 plot_distance_correlation_heatmap,
+                                 compare_correlations, plot_nonlinear_dependencies)
 # Импорты из preprocessing
 from preprocessing.interactive_menu import interactive_bounds_adjustment
 from preprocessing.window_analysis import (find_best_window, plot_best_window_heatmap,
@@ -75,10 +76,41 @@ def main():
     print("\nГрафики сырых данных сохраняются в папке проекта")
     plot_raw_data(df, input_columns, output_columns, save_folder=raw_data_folder)
 
-    print("\nТепловая карта корреляций сохраняется в папке проекта")
+    print("\nТепловая карта корреляций Пирсона сохраняется в папке проекта")
     plot_correlation_heatmap(df, input_columns, output_columns,
                              save_folder=raw_data_folder,
-                             title="Тепловая карта корреляций (исходные данные)")
+                             title="Тепловая карта корреляций (Пирсон - только линейные связи)")
+
+    # ============= ДОПОЛНИТЕЛЬНЫЙ АНАЛИЗ НЕЛИНЕЙНЫХ ЗАВИСИМОСТЕЙ =============
+    print("\n" + "=" * 80)
+    print("ДОПОЛНИТЕЛЬНЫЙ АНАЛИЗ НЕЛИНЕЙНЫХ ЗАВИСИМОСТЕЙ")
+    print("=" * 80)
+    print("Distance Correlation обнаруживает ЛЮБЫЕ зависимости (не только линейные).")
+    print("Это может занять 1-2 минуты для 10 000 строк.")
+
+    nonlinear_choice = input("\nВыполнить анализ нелинейных зависимостей? (да/нет): ").strip().lower()
+
+    if nonlinear_choice in ['да', 'yes', 'y', 'д']:
+        print("\n⏳ Выполняется анализ...")
+
+        # Тепловая карта Distance Correlation
+        print("\n1. Построение тепловой карты Distance Correlation...")
+        plot_distance_correlation_heatmap(df, input_columns, output_columns,
+                                          save_folder=raw_data_folder)
+
+        # Визуализация нелинейных зависимостей
+        print("\n2. Визуализация нелинейных зависимостей...")
+        plot_nonlinear_dependencies(df, input_columns, output_columns,
+                                    save_folder=raw_data_folder, top_n=6)
+
+        # Сравнение методов корреляции
+        print("\n3. Сравнение методов корреляции...")
+        compare_correlations(df, input_columns, output_columns, save_folder=raw_data_folder)
+
+        print("\n✅ Анализ нелинейных зависимостей завершён!")
+        print(f"   Результаты сохранены в: {raw_data_folder}")
+    else:
+        print("\nАнализ нелинейных зависимостей пропущен.")
 
     # Сохраняем исходные данные
     original_csv_path = os.path.join(raw_data_folder, 'original_data.csv')
@@ -573,6 +605,14 @@ def main():
                 else:
                     print("\nГенерация отменена.")
                     continue
+
+            elif action_choice == '3':
+                print("\nЗавершение работы...")
+                break  # Выход из цикла while
+
+            else:
+                print("Неверный выбор. Пожалуйста, выберите 1, 2 или 3.")
+                continue
     else:
         print("\n❌ Не удалось обучить ни одну модель!")
 
